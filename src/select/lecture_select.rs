@@ -21,9 +21,9 @@ impl<'a> LectureSelect<'a> {
     }
 }
 
-impl Selectable for LectureSelect {
+impl<'a> Selectable for LectureSelect<'a> {
     fn select_0(&self, i: usize) -> Option<usize> {
-        let sum_limit = i / self.b - 1;
+        let sum_limit = (i) / (self.b as usize) - 1;
         let mut sum = 0u64;
         for i in 0..sum_limit {
             sum += self.B[i];

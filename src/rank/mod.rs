@@ -1,6 +1,8 @@
 mod naive_rank;
+mod lecture_rank;
 
 pub use naive_rank::RankNaive;
+pub use lecture_rank::LectureRank;
 
 pub trait Rankable {
     fn rank_0(&self, idx: usize) -> usize {
