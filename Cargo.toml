@@ -1,0 +1,24 @@
+[package]
+name = "runaway-datastructures"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "runaway_datastructures"
+path = "src/lib.rs"
+
+[[bin]]
+name = "runaway_bin"
+path = "src/bin.rs"
+
+[dependencies]
+log = "0.4.21"
+bitvec = "1"
+rand = { version = "0.8.5", features = [ "small_rng" ] }
+
+[dev-dependencies]
+criterion = { version = "0.4" }
+
+[[bench]]
+name = "select_benchmark"
+harness = false
