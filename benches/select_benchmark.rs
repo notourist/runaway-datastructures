@@ -7,7 +7,7 @@ use runaway_datastructures::select::{NaiveSelect, Selectable};
 
 const MI_B: usize = 1024 * 1024;
 const SIZE: usize = 512 * MI_B;
-const SELECTS: [u32; 5] = [20, 22, 24, 26, 28];
+const SELECTS_NAIVE: [u32; 7] = [14, 15, 16, 17, 18, 19, 20];
 
 fn gen_bv(bit_length: usize) -> BitVec<u64> {
     let mut rand_bv = bitvec![u64, Lsb0; 0; bit_length];
@@ -25,8 +25,9 @@ fn gen_bv(bit_length: usize) -> BitVec<u64> {
 fn naive(c: &mut Criterion) {
     let naive_select = NaiveSelect { bit_vec: &gen_bv(SIZE) };
     let mut group = c.benchmark_group("naive_select");
-    group.measurement_time(Duration::from_secs(15));
-    for select in SELECTS {
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(6));
+    for select in SELECTS_NAIVE {
         group.bench_with_input(BenchmarkId::from_parameter(format!("{}MiB/2^{}", SIZE / MI_B, select)), &select, |b, select| {
             b.iter(|| {
                 naive_select.select_1(2usize.pow(*select));
