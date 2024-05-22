@@ -10,7 +10,7 @@ impl Selectable for NaiveSelect<'_> {
     fn select_0(&self, nth: usize) -> Option<usize> {
         let mut counted = 0;
         for i in 0..self.bit_vec.len() {
-            if self.bit_vec[i] == false {
+            if !self.bit_vec[i] {
                 counted += 1;
                 if nth == counted {
                     return Some(i)
@@ -23,7 +23,7 @@ impl Selectable for NaiveSelect<'_> {
     fn select_1(&self, nth: usize) -> Option<usize> {
         let mut counted = 0;
         for i in 0..self.bit_vec.len() {
-            if self.bit_vec[i] == true {
+            if self.bit_vec[i] {
                 counted += 1;
             }
             if nth == counted {

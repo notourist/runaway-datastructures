@@ -4,8 +4,8 @@ pub trait Accessable {
     fn access(&self, idx: usize) -> bool;
 }
 
-struct NaiveAccess<'a> {
-    bit_vec: &'a bv::BitVec<usize, bv::Lsb0>
+pub struct NaiveAccess<'a> {
+    pub bit_vec: &'a bv::BitVec<u64, bv::Lsb0>
 }
 
 impl Accessable for NaiveAccess<'_> {

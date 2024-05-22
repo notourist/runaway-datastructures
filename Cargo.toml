@@ -8,8 +8,10 @@ name = "runaway_datastructures"
 path = "src/lib.rs"
 
 [[bin]]
-name = "runaway_bin"
-path = "src/bin.rs"
+name = "main"
+
+[[bin]]
+name = "query_reader"
 
 [dependencies]
 log = "0.4.21"
@@ -20,5 +22,5 @@ rand = { version = "0.8.5", features = [ "small_rng" ] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
-name = "select_benchmark"
+name = "rank_benchmark"
 harness = false

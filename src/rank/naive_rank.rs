@@ -2,15 +2,15 @@ use bitvec::prelude as bv;
 
 use crate::rank::Rankable;
 
-pub struct RankNaive<'a> {
-    bit_vec: &'a bv::BitVec<usize, bv::Lsb0>
+pub struct NaiveRank<'a> {
+    pub bit_vec: &'a bv::BitSlice<u64, bv::Lsb0>
 }
 
-impl Rankable for RankNaive<'_> {
-    fn rank_1(&self, idx: usize) -> usize {
+impl Rankable for NaiveRank<'_> {
+    fn rank_0(&self, idx: usize) -> usize {
         let mut count = 0;
         for i in 0..idx {
-            if self.bit_vec[i] == true {
+            if !self.bit_vec[i] {
                 count += 1;
             }
         }
