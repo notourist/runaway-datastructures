@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use Query::*;
 use crate::access::Accessable;
 use crate::rank::Rankable;
@@ -8,13 +9,6 @@ pub enum Query {
     Access(usize),
     Rank(bool, usize),
     Select(bool, usize),
-}
-
-#[derive(Debug)]
-pub enum QueryResult {
-    Access(bool),
-    Rank(usize),
-    Select(Option<usize>)
 }
 
 impl Query {
@@ -52,6 +46,23 @@ impl TryFrom<&str> for Query {
             Ok(Select(which_bit, nth))
         } else {
             Err(())
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum QueryResult {
+    Access(bool),
+    Rank(usize),
+    Select(Option<usize>)
+}
+
+impl QueryResult {
+    pub fn as_line(&self) -> String {
+        match self {
+            QueryResult::Access(b) => format!("{}\n", *b as u8),
+            QueryResult::Rank(r) => format!("{}\n", r),
+            QueryResult::Select(opt) => opt.map_or_else(|| "None\n".to_string(), |s| format!("{}\n", s)),
         }
     }
 }

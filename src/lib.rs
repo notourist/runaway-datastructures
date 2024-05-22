@@ -28,11 +28,4 @@ impl<A: Accessable, R: Rankable, S: Selectable> Concrete<A, R, S> {
             },
         }
     }
-
-    pub fn process_queries(&self, queries: Vec<Query>) -> Vec<QueryResult> {
-        queries
-            .iter()
-            .map(|query| self.process_query(query))
-            .collect()
-    }
 }

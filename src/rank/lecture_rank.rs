@@ -1,3 +1,4 @@
+use std::mem;
 use std::ops::Range;
 use crate::rank::Rankable;
 use bitvec::field::BitField;
@@ -108,6 +109,10 @@ impl<'a> LectureRank<'a> {
             unaccounted_range,
         }
     }
+
+    /*pub fn size(&self) -> usize {
+        mem::size_of::<usize>() * 5 + mem::size_of::<Range<usize>>() +
+    }*/
 }
 
 impl<'a> Rankable for LectureRank<'a> {

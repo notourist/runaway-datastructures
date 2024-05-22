@@ -1,6 +1,6 @@
 use bitvec::order::Lsb0;
 use bitvec::prelude::*;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, black_box};
 use rand::{Rng, SeedableRng};
 use runaway_datastructures::rank::{LectureRank, NaiveRank, Rankable};
 use std::time::Duration;
@@ -36,19 +36,19 @@ fn compare_impls(c: &mut Criterion) {
     };
     let lecture_rank = LectureRank::new(&generated);
     let mut group = c.benchmark_group("compare select");
-    group.warm_up_time(Duration::from_secs(5));
-    group.measurement_time(Duration::from_secs(8));
+    group.warm_up_time(Duration::from_secs(2));
+    group.measurement_time(Duration::from_secs(5));
     group.sample_size(1000);
     for size in SIZES {
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("naive/{}MiB/2^{}", SIZE / MI_B, size)),
             &size,
-            |b, size| b.iter(|| naive_rank.rank_0(*size as usize)),
+            |b, size| b.iter(|| black_box(naive_rank.rank_0(*size as usize))),
         );
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("lecture/{}MiB/2^{}", SIZE / MI_B, size)),
             &size,
-            |b, size| b.iter(|| lecture_rank.rank_0(*size as usize)),
+            |b, size| b.iter(|| black_box(lecture_rank.rank_0(*size as usize))),
         );
     }
     group.finish();
