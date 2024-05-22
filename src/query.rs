@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+
 use Query::*;
 use crate::access::Accessable;
 use crate::rank::Rankable;

@@ -68,7 +68,7 @@ impl<'a> LectureRank<'a> {
 
         let block_count = n / s;
         let super_block_count = n / s_tick;
-        let blocks_in_sbs_count = block_count / super_block_count;
+        let blocks_in_super_block_count = block_count / super_block_count;
 
         let mut blocks: Vec<SuperBlock> = Vec::with_capacity(block_count);
         let mut super_blocks: Vec<SuperBlock> = Vec::with_capacity(super_block_count);
@@ -80,7 +80,7 @@ impl<'a> LectureRank<'a> {
             block_zero_count += bits_in_block.count_zeros() as SuperBlock;
             blocks.push(block_zero_count);
             current_block_in_sb_count += 1;
-            if current_block_in_sb_count == blocks_in_sbs_count {
+            if current_block_in_sb_count == blocks_in_super_block_count {
                 block_zero_count += if super_blocks.is_empty() {
                     0
                 } else {
@@ -91,7 +91,6 @@ impl<'a> LectureRank<'a> {
                 current_block_in_sb_count = 0;
             }
         }
-        let blocks_in_super_block_count = block_count / super_block_count;
         // Dirty hack: the last block is too small and was ignored during construction,
         // so we need to lookup bits by hand
         let unaccounted_count = n % s;
@@ -110,9 +109,17 @@ impl<'a> LectureRank<'a> {
         }
     }
 
-    /*pub fn size(&self) -> usize {
-        mem::size_of::<usize>() * 5 + mem::size_of::<Range<usize>>() +
-    }*/
+    pub fn bit_size(&self) -> usize {
+        (mem::size_of::<usize>()
+        + mem::size_of::<usize>()
+        + mem::size_of::<usize>()
+        + mem::size_of::<usize>()
+        + mem::size_of::<SuperBlock>() * self.super_blocks.len()
+        + mem::size_of::<SuperBlock>() * self.blocks.len()
+        + mem::size_of::<u8>() * self.lookup.len() + self.lookup[0].len()
+        + mem::size_of::<usize>()
+        + mem::size_of::<Range<usize>>()) * 8
+    }
 }
 
 impl<'a> Rankable for LectureRank<'a> {

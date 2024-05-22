@@ -22,6 +22,6 @@ pub fn main() {
         i += 1;
     }
     let lecture_rank = LectureRank::new(&rand_bv);
-    let results: Vec<usize> = vec![2usize.pow(10)].repeat(100000000).iter().map(|i| black_box(lecture_rank.rank_0(*i))).collect();
+    let results: Vec<usize> = [2usize.pow(10)].repeat(100000000).iter().map(|i| black_box(lecture_rank.rank_0(*i))).collect();
     println!("{}", results[123]);
 }
