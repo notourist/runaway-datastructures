@@ -3,7 +3,7 @@ use bitvec::prelude as bv;
 use super::Selectable;
 
 pub struct NaiveSelect<'a> {
-    pub bit_vec: &'a bv::BitVec<u64, bv::Lsb0>
+    pub bit_vec: &'a bv::BitVec<u64, bv::Lsb0>,
 }
 
 impl Selectable for NaiveSelect<'_> {
@@ -13,7 +13,7 @@ impl Selectable for NaiveSelect<'_> {
             if !self.bit_vec[i] {
                 counted += 1;
                 if nth == counted {
-                    return Some(i)
+                    return Some(i);
                 }
             }
         }
@@ -27,7 +27,7 @@ impl Selectable for NaiveSelect<'_> {
                 counted += 1;
             }
             if nth == counted {
-                return Some(i)
+                return Some(i);
             }
         }
         None

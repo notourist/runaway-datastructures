@@ -22,5 +22,16 @@ rand = { version = "0.8.5", features = [ "small_rng" ] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
-name = "rank_benchmark"
+name = "select_index"
+path = "benches/select/index.rs"
+harness = false
+
+[[bench]]
+name = "select_length"
+path = "benches/select/length.rs"
+harness = false
+
+[[bench]]
+name = "select_large"
+path = "benches/select/large.rs"
 harness = false

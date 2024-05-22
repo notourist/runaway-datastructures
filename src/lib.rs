@@ -1,20 +1,20 @@
-use crate::access::Accessable;
+use crate::access::Accessible;
 use crate::query::{Query, QueryResult};
 use crate::rank::Rankable;
 use crate::select::Selectable;
 
 pub mod access;
+pub mod query;
 pub mod rank;
 pub mod select;
-pub mod query;
 
-pub struct Concrete<A: Accessable, R: Rankable, S: Selectable> {
+pub struct Concrete<A: Accessible, R: Rankable, S: Selectable> {
     a: A,
     r: R,
     s: S,
 }
 
-impl<A: Accessable, R: Rankable, S: Selectable> Concrete<A, R, S> {
+impl<A: Accessible, R: Rankable, S: Selectable> Concrete<A, R, S> {
     pub fn process_query(&self, query: &Query) -> QueryResult {
         match query {
             Query::Access(idx) => QueryResult::Access(self.a.access(*idx)),

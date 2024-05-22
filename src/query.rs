@@ -1,8 +1,7 @@
-
-use Query::*;
-use crate::access::Accessable;
+use crate::access::Accessible;
 use crate::rank::Rankable;
 use crate::select::Selectable;
+use Query::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Query {
@@ -12,7 +11,12 @@ pub enum Query {
 }
 
 impl Query {
-    pub fn do_it<A: Accessable, R: Rankable, S: Selectable, >(&self, a: &A, r: &R, s: &S) -> QueryResult {
+    pub fn do_it<A: Accessible, R: Rankable, S: Selectable>(
+        &self,
+        a: &A,
+        r: &R,
+        s: &S,
+    ) -> QueryResult {
         match self {
             Access(idx) => QueryResult::Access(a.access(*idx)),
             Rank(w, idx) => QueryResult::Rank(match *w {
@@ -54,7 +58,7 @@ impl TryFrom<&str> for Query {
 pub enum QueryResult {
     Access(bool),
     Rank(usize),
-    Select(Option<usize>)
+    Select(Option<usize>),
 }
 
 impl QueryResult {
@@ -62,7 +66,9 @@ impl QueryResult {
         match self {
             QueryResult::Access(b) => format!("{}\n", *b as u8),
             QueryResult::Rank(r) => format!("{}\n", r),
-            QueryResult::Select(opt) => opt.map_or_else(|| "None\n".to_string(), |s| format!("{}\n", s)),
+            QueryResult::Select(opt) => {
+                opt.map_or_else(|| "None\n".to_string(), |s| format!("{}\n", s))
+            }
         }
     }
 }
@@ -90,9 +96,12 @@ mod tests {
 
     #[test]
     fn select() {
-        let select1  = "select 0 5645456984598654\n";
+        let select1 = "select 0 5645456984598654\n";
         let select2 = "select 1 1\n";
-        assert_eq!(Query::try_from(select1), Ok(Select(false, 5645456984598654usize)));
+        assert_eq!(
+            Query::try_from(select1),
+            Ok(Select(false, 5645456984598654usize))
+        );
         assert_eq!(Query::try_from(select2), Ok(Select(true, 1)));
     }
 

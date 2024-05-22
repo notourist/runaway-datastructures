@@ -3,7 +3,7 @@ use bitvec::prelude as bv;
 use crate::rank::Rankable;
 
 pub struct NaiveRank<'a> {
-    pub bit_vec: &'a bv::BitSlice<u64, bv::Lsb0>
+    pub bit_vec: &'a bv::BitSlice<u64, bv::Lsb0>,
 }
 
 impl Rankable for NaiveRank<'_> {

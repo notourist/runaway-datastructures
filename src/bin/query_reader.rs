@@ -1,9 +1,9 @@
 use bitvec::bitvec;
 use bitvec::order::Lsb0;
 use bitvec::vec::BitVec;
-use runaway_datastructures::access::NaiveAccess;
+use runaway_datastructures::access::DirectAccess;
 use runaway_datastructures::query::{Query, QueryResult};
-use runaway_datastructures::rank::LectureRank;
+use runaway_datastructures::rank::{BlockFullNoLookupRank, LectureNoLookupRank, LectureRank};
 use runaway_datastructures::select::NoSelect;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, Write};
@@ -36,7 +36,7 @@ fn main() -> Result<(), io::Error> {
 
     let start = Instant::now();
 
-    let naive_access = NaiveAccess { bit_vec: &bit_vec };
+    let naive_access = DirectAccess { bit_vec: &bit_vec };
     let select = NoSelect {};
     let lecture_rank = LectureRank::new(&bit_vec);
 
