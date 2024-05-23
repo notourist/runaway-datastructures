@@ -35,3 +35,6 @@ harness = false
 name = "select_large"
 path = "benches/select/large.rs"
 harness = false
+
+[profile.release]
+debug = true

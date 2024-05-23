@@ -51,11 +51,11 @@ impl<'a> LectureRank<'a> {
         for vector in 0..=max_vector {
             lookup.push(vec![0; s]);
             // For every position i...
-            let mut zero_count: u8 = 0;
+            let mut ones_count: u8 = 0;
             for i in 0..s {
-                lookup[vector as usize][i] = zero_count;
+                lookup[vector as usize][i] = ones_count;
                 if (vector >> i & 1) == 0 {
-                    zero_count += 1;
+                    ones_count += 1;
                 }
             }
         }
@@ -71,7 +71,7 @@ impl<'a> LectureRank<'a> {
         let mut block_in_super_block = 0;
         for block_idx in 0..block_count {
             block_zeroes +=
-                bit_vec[(block_idx * s)..(block_idx + 1) * s].count_zeros() as SuperBlock;
+                bit_vec[(block_idx * s)..(block_idx + 1) * s].count_ones() as SuperBlock;
             blocks.push(block_zeroes);
             block_in_super_block += 1;
             if block_in_super_block == blocks_in_super_block_count {
@@ -117,7 +117,7 @@ impl<'a> LectureRank<'a> {
 }
 
 impl<'a> Rankable for LectureRank<'a> {
-    fn rank_0(&self, idx: usize) -> usize {
+    fn rank_1(&self, idx: usize) -> usize {
         let super_block_idx = idx / self.s_tick;
         let sbv = if super_block_idx != 0 {
             self.super_blocks[super_block_idx - 1] as usize
@@ -138,8 +138,8 @@ impl<'a> Rankable for LectureRank<'a> {
             } else {
                 self.bit_vec[(block_idx * self.s)..(block_idx + 1) * self.s].load::<u32>()
             };
-            let zero_counts = &self.lookup[num as usize];
-            zero_counts[bit_idx] as usize
+            let one_counts = &self.lookup[num as usize];
+            one_counts[bit_idx] as usize
         } else {
             0
         };

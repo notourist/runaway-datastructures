@@ -2,7 +2,7 @@ use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{Rng, SeedableRng};
-use runaway_datastructures::rank::{BlockFullNoLookupRank, LectureNoLookupRank, NaiveRank, Rankable};
+use runaway_datastructures::rank::{BlockStaticIncrementRank, LectureNoLookupRank, NaiveRank, Rankable};
 use std::time::Duration;
 
 const SIZES: [u32; 5] = [8, 10, 12, 14, 16];
@@ -17,7 +17,7 @@ fn compare_select_by_length(c: &mut Criterion) {
         let naive_rank = NaiveRank {
             bit_vec: &generated,
         };
-        let block_rank = BlockFullNoLookupRank::new(&generated);
+        let block_rank = BlockStaticIncrementRank::new(&generated);
         let lecture_rank = LectureNoLookupRank::new(&generated);
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("naive/{}MiB/2^{}", size, size)),

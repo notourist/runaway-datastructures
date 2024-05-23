@@ -2,7 +2,7 @@ use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{Rng, SeedableRng};
-use runaway_datastructures::rank::{BlockFullNoLookupRank, LectureNoLookupRank, NaiveRank, Rankable};
+use runaway_datastructures::rank::{BlockStaticIncrementRank, LectureNoLookupRank, NaiveRank, Rankable};
 use std::time::Duration;
 
 const INDICES: [u32; 7] = [22, 20, 18, 16, 14, 12, 10];
@@ -28,7 +28,7 @@ fn compare_select_by_index(c: &mut Criterion) {
     let naive_rank = NaiveRank {
         bit_vec: &generated,
     };
-    let block_rank = BlockFullNoLookupRank::new(&generated);
+    let block_rank = BlockStaticIncrementRank::new(&generated);
     let lecture_rank = LectureNoLookupRank::new(&generated);
     let mut group = c.benchmark_group("select_index");
     group.warm_up_time(Duration::from_secs(2));

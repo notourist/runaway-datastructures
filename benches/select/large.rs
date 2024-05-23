@@ -2,7 +2,7 @@ use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{Rng, SeedableRng};
-use runaway_datastructures::rank::{BlockFullNoLookupRank, LectureNoLookupRank, Rankable};
+use runaway_datastructures::rank::{BlockStaticIncrementRank, LectureNoLookupRank, Rankable};
 use std::time::Duration;
 
 const MI_B: usize = 1024 * 1024;
@@ -23,7 +23,7 @@ fn gen_bv(bit_length: usize) -> BitVec<u64> {
 fn compare_select_by_index(c: &mut Criterion) {
     const SIZE: usize = 14240 * MI_B;
     let generated = gen_bv(SIZE);
-    let block_rank = BlockFullNoLookupRank::new(&generated);
+    let block_rank = BlockStaticIncrementRank::new(&generated);
     let lecture_rank = LectureNoLookupRank::new(&generated);
     let mut group = c.benchmark_group("select_large");
     group.warm_up_time(Duration::from_secs(5));

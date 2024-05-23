@@ -3,7 +3,7 @@ mod lecture_rank;
 mod naive_rank;
 mod lecture_no_lookup_rank;
 
-pub use block_full_no_lookup_rank::BlockFullNoLookupRank;
+pub use block_full_no_lookup_rank::BlockStaticIncrementRank;
 pub use lecture_rank::LectureRank;
 pub use lecture_no_lookup_rank::LectureNoLookupRank;
 pub use naive_rank::NaiveRank;
