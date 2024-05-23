@@ -38,7 +38,7 @@ fn main() -> Result<(), io::Error> {
 
     let access = DirectAccess { bit_vec: &bit_vec };
     let select = NoSelect {};
-    let rank = LectureNoLookupRank::new(&bit_vec);
+    let rank = LectureRank::new(&bit_vec);
 
     let results: Vec<QueryResult> = queries
         .iter()

@@ -5,11 +5,11 @@ use bitvec::bitvec;
 use bitvec::field::BitField;
 use bitvec::order::Lsb0;
 use rand::Rng;
-use runaway_datastructures::rank::{LectureNoLookupRank, Rankable};
+use runaway_datastructures::rank::{LectureNoLookupRank, LectureRank, Rankable};
 use std::hint::black_box;
 
 pub fn main() {
-    const BIT_VEC_LEN: usize = 2usize.pow(29);
+    const BIT_VEC_LEN: usize = 2usize.pow(20);
 
     let mut rng = rand::thread_rng();
 
@@ -21,11 +21,6 @@ pub fn main() {
         rand_bv[(i * BITS_PER_RNG_READ)..((i + 1) * BITS_PER_RNG_READ)].store(num);
         i += 1;
     }
-    let lecture_rank = LectureNoLookupRank::new(&rand_bv);
-    let results: Vec<usize> = [2usize.pow(10)]
-        .repeat(100000000)
-        .iter()
-        .map(|i| black_box(lecture_rank.rank_0(*i)))
-        .collect();
-    println!("{}", results[123]);
+    let lecture_rank = LectureRank::new(&rand_bv);
+    println!("{}", lecture_rank.rank_0(8096));
 }

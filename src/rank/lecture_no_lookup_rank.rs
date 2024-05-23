@@ -45,7 +45,7 @@ impl<'a> LectureNoLookupRank<'a> {
         let blocks_in_super_block_count = block_count / super_block_count;
 
         let mut blocks: BitVec = BitVec::with_capacity(block_count * s);
-        let mut super_blocks = BitVec::with_capacity(super_block_count * s_tick);
+        let mut super_blocks: BitVec<u64, Lsb0> = BitVec::with_capacity(super_block_count * s_tick);
 
         let mut incremental_ones = 0;
         let mut block_in_super_block = 0;
@@ -59,14 +59,14 @@ impl<'a> LectureNoLookupRank<'a> {
                 incremental_ones += if super_blocks.is_empty() {
                     0
                 } else {
-                    super_blocks[super_blocks.len() - 1]
+                    todo!()//super_blocks[super_blocks.len() - 1]
                 };
-                super_blocks.push(incremental_ones);
+                //super_blocks.push(incremental_ones);
                 incremental_ones = 0;
                 block_in_super_block = 0;
             }
         }
-        LectureNoLookupRank {
+        /*LectureNoLookupRank {
             bit_vec,
             n,
             s,
@@ -74,7 +74,8 @@ impl<'a> LectureNoLookupRank<'a> {
             blocks_in_super_block_count,
             super_blocks,
             blocks,
-        }
+        }*/
+        todo!()
     }
 
     pub fn bit_size(&self) -> usize {
