@@ -5,11 +5,11 @@ use bitvec::bitvec;
 use bitvec::field::BitField;
 use bitvec::order::Lsb0;
 use rand::Rng;
-use runaway_datastructures::rank::{LectureNoLookupRank, LectureRank, Rankable};
-use std::hint::black_box;
+use runaway_datastructures::rank::{InterleavedRank, NaiveRank, Rankable};
 
 pub fn main() {
-    const BIT_VEC_LEN: usize = 2usize.pow(20);
+    const BIT_VEC_LEN: usize = 2usize.pow(12);
+    dbg!(BIT_VEC_LEN);
 
     let mut rng = rand::thread_rng();
 
@@ -21,6 +21,16 @@ pub fn main() {
         rand_bv[(i * BITS_PER_RNG_READ)..((i + 1) * BITS_PER_RNG_READ)].store(num);
         i += 1;
     }
-    let lecture_rank = LectureRank::new(&rand_bv);
-    println!("{}", lecture_rank.rank_0(8096));
+    let rank = InterleavedRank::new(&rand_bv);
+    let idx = 2560;
+    dbg!(idx);
+    dbg!(rank.rank_1(idx));
+    dbg!(NaiveRank { bit_vec: &rand_bv }.rank_1(idx));
+    let space = rand_bv.len() + rank.bit_size();
+    println!(
+        "RESULT name=Nasarek space={} support_space={} overhead={}",
+        space,
+        rank.bit_size(),
+        rank.bit_size() as f64 / space as f64,
+    );
 }

@@ -1,11 +1,9 @@
 mod block_full_no_lookup_rank;
-mod lecture_rank;
+mod interleaved_rank;
 mod naive_rank;
-mod lecture_no_lookup_rank;
 
 pub use block_full_no_lookup_rank::BlockStaticIncrementRank;
-pub use lecture_rank::LectureRank;
-pub use lecture_no_lookup_rank::LectureNoLookupRank;
+pub use interleaved_rank::InterleavedRank;
 pub use naive_rank::NaiveRank;
 
 pub trait Rankable {
@@ -25,10 +23,9 @@ mod tests {
     use bitvec::order::Lsb0;
     use rand::Rng;
 
-    const BIT_VEC_LEN: usize = 2usize.pow(22);
-
     #[test]
     fn compare() {
+        const BIT_VEC_LEN: usize = 2usize.pow(32);
         let mut rng = rand::thread_rng();
         let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
         const BITS_PER_RNG_READ: usize = 64;
@@ -38,12 +35,11 @@ mod tests {
             rand_bv[(rng_i * BITS_PER_RNG_READ)..((rng_i + 1) * BITS_PER_RNG_READ)].store(num);
             rng_i += 1;
         }
-        let naive_rank = NaiveRank { bit_vec: &rand_bv };
-        let mut binding = rand_bv.clone();
-        let lecture_rank = LectureNoLookupRank::new(&mut binding);
-        for i in 0..BIT_VEC_LEN {
-            assert_eq!(lecture_rank.rank_0(i), naive_rank.rank_0(i));
-            assert_eq!(lecture_rank.rank_1(i), naive_rank.rank_1(i));
+        let assumed_to_be_correct = BlockStaticIncrementRank::new(&rand_bv);
+        let lecture_rank = InterleavedRank::new(&rand_bv);
+        for i in BIT_VEC_LEN - 2usize.pow(26)..BIT_VEC_LEN {
+            assert_eq!(lecture_rank.rank_0(i), assumed_to_be_correct.rank_0(i));
+            assert_eq!(lecture_rank.rank_1(i), assumed_to_be_correct.rank_1(i));
         }
     }
 }

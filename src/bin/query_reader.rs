@@ -1,15 +1,14 @@
 use bitvec::bitvec;
 use bitvec::order::Lsb0;
-use bitvec::vec::BitVec;
 use runaway_datastructures::access::DirectAccess;
 use runaway_datastructures::query::{Query, QueryResult};
-use runaway_datastructures::rank::{BlockStaticIncrementRank, LectureNoLookupRank, LectureRank};
+use runaway_datastructures::rank::{InterleavedRank};
 use runaway_datastructures::select::NoSelect;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::time::Instant;
-use std::{env, io, mem};
+use std::{env, io};
 
 fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
@@ -38,18 +37,19 @@ fn main() -> Result<(), io::Error> {
 
     let access = DirectAccess { bit_vec: &bit_vec };
     let select = NoSelect {};
-    let rank = LectureRank::new(&bit_vec);
+    let rank = InterleavedRank::new(&bit_vec);
 
     let results: Vec<QueryResult> = queries
         .iter()
         .map(|query| query.do_it(&access, &rank, &select))
         .collect();
     let time = start.elapsed();
-    let space = mem::size_of::<BitVec<u64, Lsb0>>() + bit_vec.len() + rank.bit_size();
+    let space = bit_vec.len() + rank.bit_size();
     println!(
-        "RESULT name=Nasarek time={:?} space={} overhead={}",
+        "RESULT name=Nasarek time={:?} space={} support_space={} overhead={}",
         time,
         space,
+        rank.bit_size(),
         rank.bit_size() as f64 / space as f64,
     );
 
