@@ -14,7 +14,7 @@ const L1_INDEX_BIT_SIZE: usize = 32;
 const L2_INDEX_BIT_SIZE: usize = 10;
 
 #[derive(Debug)]
-struct InterleavedIndex(u64);
+struct InterleavedIndex(u64, usize);
 
 impl InterleavedIndex {
     pub fn new(l1: u32, l2s: &[u16]) -> Self {
@@ -23,7 +23,7 @@ impl InterleavedIndex {
         for (i, l2) in l2s.iter().enumerate() {
             value |= (*l2 as u64) << L2_INDEX_BIT_SIZE * i + L1_INDEX_BIT_SIZE
         }
-        InterleavedIndex(value)
+        InterleavedIndex(value, l2s.len())
     }
 
     fn l1(&self) -> u32 {
@@ -34,8 +34,11 @@ impl InterleavedIndex {
         (self.0 >> ((L2_INDEX_BIT_SIZE * index) + L1_INDEX_BIT_SIZE) & (1 << L2_INDEX_BIT_SIZE) - 1)
             as u16
     }
-}
 
+    fn len(&self) -> usize {
+        self.1
+    }
+}
 
 
 pub struct RunawayVector<'a> {
@@ -102,18 +105,71 @@ impl<'a> RunawayVector<'a> {
 
 impl<'a> Selectable for RunawayVector<'a> {
     fn select0(&self, nth: usize) -> Option<usize> {
+        None
+    }
+
+    fn select1(&self, nth: usize) -> Option<usize> {
+        dbg!(nth);
+        let mut rank = nth;
         let mut l0_index = 0;
         for (i, l0) in self.l0_indices.iter().enumerate() {
             if *l0 as usize >= nth {
+                rank -= *l0 as usize;
                 l0_index = i;
                 break;
             }
         }
-        todo!()
-    }
+        if rank == 0 {
+            return Some(l0_index * L0_BIT_SIZE);
+        }
+        let mut last_l1 = (l0_index + 1) * (L0_BIT_SIZE / L1_BIT_SIZE) - 1;
+        if last_l1 > self.l12_indices.len() - 1 {
+            last_l1 = self.l12_indices.len() - 1;
+        }
+        let mut l1_index = last_l1;
+        let mut l12_index = &self.l12_indices[l1_index];
+        while l1_index >= (l0_index) * (L0_BIT_SIZE / L1_BIT_SIZE) {
+            l12_index = &self.l12_indices[l1_index];
+            if rank >= l12_index.l1() as usize {
+                rank -= l12_index.l1() as usize;
+            }
+            if l1_index == 0 {
+                break;
+            }
+            l1_index -= 1;
+        }
+        if rank == 0 {
+            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE);
+        }
+        let mut l2_index = l12_index.len() - 1;
+        for i in (0..l12_index.len()).rev() {
+            // FIXME this
+            if rank > l12_index.index(i) as usize {
+                rank -= l12_index.index(i) as usize;
+                l2_index = i;
+            }
+        }
 
-    fn select1(&self, nth: usize) -> Option<usize> {
-        None
+        if rank == 0 {
+            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE);
+        }
+        let bit_search_start = l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
+        let bit_search_end = if bit_search_start + L2_BIT_SIZE > self.bit_vec.len() { self.bit_vec.len() } else { bit_search_start + L2_BIT_SIZE };
+        if bit_search_start >= bit_search_end {
+            return None;
+        }
+        let mut bit = 0;
+        for i in bit_search_start..bit_search_end  {
+            //dbg!(self.bit_vec[i]);
+            if self.bit_vec[i] {
+                rank -= self.bit_vec[i] as usize;
+                if rank == 0 {
+                    bit = i;
+                    break
+                }
+            }
+        }
+        return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + bit);
     }
 }
 
@@ -151,10 +207,11 @@ mod tests {
     use bitvec::field::BitField;
     use bitvec::order::Lsb0;
     use rand::Rng;
-    use crate::rank::BlockRank;
+    use crate::rank::BlockVector;
+    use crate::select::NaiveSelect;
 
     #[test]
-    fn compare() {
+    fn rank() {
         const BIT_VEC_LEN: usize = 2usize.pow(33);
         let mut rng = rand::thread_rng();
         let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
@@ -165,11 +222,31 @@ mod tests {
             rand_bv[(rng_i * BITS_PER_RNG_READ)..((rng_i + 1) * BITS_PER_RNG_READ)].store(num);
             rng_i += 1;
         }
-        let assumed_to_be_correct = BlockRank::new(&rand_bv);
+        let assumed_to_be_correct = BlockVector::new(&rand_bv);
         let test_me = RunawayVector::new(&rand_bv);
         for i in 2usize.pow(32) + 1..BIT_VEC_LEN {
             //assert_eq!(test_me.rank0(i), assumed_to_be_correct.rank0(i));
             assert_eq!(test_me.rank1(i), assumed_to_be_correct.rank1(i));
+        }
+    }
+
+    #[test]
+    fn select() {
+        const BIT_VEC_LEN: usize = 2usize.pow(20);
+        let mut rng = rand::thread_rng();
+        let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
+        const BITS_PER_RNG_READ: usize = 64;
+        let mut rng_i = 0;
+        while rng_i < BIT_VEC_LEN / BITS_PER_RNG_READ {
+            let num: u64 = rng.gen();
+            rand_bv[(rng_i * BITS_PER_RNG_READ)..((rng_i + 1) * BITS_PER_RNG_READ)].store(num);
+            rng_i += 1;
+        }
+        let assumed_to_be_correct = NaiveSelect::new(&rand_bv);
+        let test_me = RunawayVector::new(&rand_bv);
+        for i in 0..BIT_VEC_LEN {
+            //assert_eq!(test_me.rank0(i), assumed_to_be_correct.rank0(i));
+            assert_eq!(test_me.select1(i), assumed_to_be_correct.select1(i));
         }
     }
 }

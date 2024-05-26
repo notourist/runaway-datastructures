@@ -5,10 +5,12 @@ use bitvec::bitvec;
 use bitvec::field::BitField;
 use bitvec::order::Lsb0;
 use rand::Rng;
-use runaway_datastructures::rank::{InterleavedRank, Rankable};
+use runaway_datastructures::rank::Rankable;
+use runaway_datastructures::runaway_vector::RunawayVector;
+use runaway_datastructures::select::Selectable;
 
 pub fn main() {
-    const BIT_VEC_LEN: usize = 2usize.pow(24);
+    const BIT_VEC_LEN: usize = 2usize.pow(10);
     dbg!(BIT_VEC_LEN);
 
     let mut rng = rand::thread_rng();
@@ -21,15 +23,15 @@ pub fn main() {
         rand_bv[(i * BITS_PER_RNG_READ)..((i + 1) * BITS_PER_RNG_READ)].store(num);
         i += 1;
     }
-    let rank = InterleavedRank::new(&rand_bv);
-    let idx = 2usize.pow(18);
-    dbg!(idx);
-    dbg!(rank.rank1(idx));
-    let space = rand_bv.len() + rank.bit_size();
+    let vector = RunawayVector::new(&rand_bv);
+    for idx in 0..256 {
+        dbg!(vector.select1(idx));
+    }
+    let space = rand_bv.len() + vector.bit_size();
     println!(
         "RESULT name=Nasarek space={} support_space={} overhead={}",
         space,
-        rank.bit_size(),
-        rank.bit_size() as f64 / space as f64,
+        vector.bit_size(),
+        vector.bit_size() as f64 / space as f64,
     );
 }

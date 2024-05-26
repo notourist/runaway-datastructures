@@ -1,9 +1,18 @@
 use bitvec::prelude as bv;
+use crate::rank::NaiveRank;
 
 use super::Selectable;
 
 pub struct NaiveSelect<'a> {
     pub bit_vec: &'a bv::BitVec<u64, bv::Lsb0>,
+}
+
+impl<'a> NaiveSelect<'a> {
+    pub fn new(bit_vec: &'a bv::BitVec<u64, bv::Lsb0>) -> Self {
+        NaiveSelect {
+            bit_vec
+        }
+    }
 }
 
 impl Selectable for NaiveSelect<'_> {
@@ -21,12 +30,12 @@ impl Selectable for NaiveSelect<'_> {
     }
 
     fn select1(&self, nth: usize) -> Option<usize> {
-        let mut counted = 0;
+        let mut counted = nth;
         for i in 0..self.bit_vec.len() {
             if self.bit_vec[i] {
-                counted += 1;
+                counted = counted.saturating_sub(1);
             }
-            if nth == counted {
+            if counted == 0 {
                 return Some(i);
             }
         }

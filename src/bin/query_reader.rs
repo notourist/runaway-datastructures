@@ -2,7 +2,7 @@ use bitvec::bitvec;
 use bitvec::order::Lsb0;
 use runaway_datastructures::access::DirectAccess;
 use runaway_datastructures::query::{Query, QueryResult};
-use runaway_datastructures::rank::{BlockRank, InterleavedRank};
+use runaway_datastructures::rank::BlockVector;
 use runaway_datastructures::select::NoSelect;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, Write};
@@ -40,7 +40,7 @@ fn main() -> Result<(), io::Error> {
 
     let results: Vec<QueryResult> = queries
         .iter()
-        .map(|query| query.do_it(&vector))
+        .map(|query| vector.process(query))
         .collect();
     let time = start.elapsed();
     let space = bit_vec.len() + vector.bit_size();

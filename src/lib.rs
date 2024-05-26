@@ -8,6 +8,7 @@ pub mod query;
 pub mod rank;
 pub mod select;
 pub mod runaway_vector;
+mod block_rank;
 
 pub struct Concrete<A: Accessible, R: Rankable, S: Selectable> {
     a: A,

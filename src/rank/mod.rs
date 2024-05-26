@@ -1,7 +1,6 @@
-mod block_rank;
 mod naive_rank;
 
-pub use block_rank::BlockRank;
+pub use crate::block_rank::BlockVector;
 pub use naive_rank::NaiveRank;
 
 pub trait Rankable {

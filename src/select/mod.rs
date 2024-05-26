@@ -13,7 +13,7 @@ impl Selectable for NoSelect {
     }
 }
 pub trait Selectable {
-    fn select0(&self, i: usize) -> Option<usize>;
+    fn select0(&self, nth: usize) -> Option<usize>;
 
-    fn select1(&self, i: usize) -> Option<usize>;
+    fn select1(&self, nth: usize) -> Option<usize>;
 }
