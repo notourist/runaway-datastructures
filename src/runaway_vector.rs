@@ -71,7 +71,7 @@ impl<'a> RunawayVector<'a> {
             }
         }
         // Small vector fix
-        if l12_indices.len() == 0 {
+        if bit_vec.len() < 1025 {
             l12_indices.push(InterleavedIndex::new(l1, &l2s[0..3]));
         }
         RunawayVector {
