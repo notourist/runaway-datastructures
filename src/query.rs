@@ -10,27 +10,6 @@ pub enum Query {
     Select(bool, usize),
 }
 
-impl Query {
-    pub fn do_it<A: Accessible, R: Rankable, S: Selectable>(
-        &self,
-        a: &A,
-        r: &R,
-        s: &S,
-    ) -> QueryResult {
-        match self {
-            Access(idx) => QueryResult::Access(a.access(*idx)),
-            Rank(w, idx) => QueryResult::Rank(match *w {
-                true => r.rank_1(*idx),
-                false => r.rank_0(*idx),
-            }),
-            Select(w, nth) => QueryResult::Select(match *w {
-                true => s.select_1(*nth),
-                false => s.select_0(*nth),
-            }),
-        }
-    }
-}
-
 impl TryFrom<&str> for Query {
     type Error = ();
 

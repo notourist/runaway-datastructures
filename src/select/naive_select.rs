@@ -7,7 +7,7 @@ pub struct NaiveSelect<'a> {
 }
 
 impl Selectable for NaiveSelect<'_> {
-    fn select_0(&self, nth: usize) -> Option<usize> {
+    fn select0(&self, nth: usize) -> Option<usize> {
         let mut counted = 0;
         for i in 0..self.bit_vec.len() {
             if !self.bit_vec[i] {
@@ -20,7 +20,7 @@ impl Selectable for NaiveSelect<'_> {
         None
     }
 
-    fn select_1(&self, nth: usize) -> Option<usize> {
+    fn select1(&self, nth: usize) -> Option<usize> {
         let mut counted = 0;
         for i in 0..self.bit_vec.len() {
             if self.bit_vec[i] {

@@ -15,7 +15,7 @@ impl<'a> NaiveRank<'a> {
 }
 
 impl Rankable for NaiveRank<'_> {
-    fn rank_1(&self, idx: usize) -> usize {
+    fn rank1(&self, idx: usize) -> usize {
         let mut count = 0;
         for i in 0..idx {
             if self.bit_vec[i] {

@@ -2,7 +2,7 @@ use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{Rng, SeedableRng};
-use runaway_datastructures::rank::{BlockStaticIncrementRank, LectureNoLookupRank, NaiveRank, Rankable};
+use runaway_datastructures::rank::{BlockRank, InterleavedRank, Rankable};
 use std::time::Duration;
 
 const INDICES: [u32; 7] = [22, 20, 18, 16, 14, 12, 10];
@@ -25,30 +25,22 @@ fn compare_select_by_index(c: &mut Criterion) {
 
     const SIZE: usize = 512 * MI_B;
     let generated = gen_bv(SIZE);
-    let naive_rank = NaiveRank {
-        bit_vec: &generated,
-    };
-    let block_rank = BlockStaticIncrementRank::new(&generated);
-    let lecture_rank = LectureNoLookupRank::new(&generated);
-    let mut group = c.benchmark_group("select_index");
+    let block_rank = BlockRank::new(&generated);
+    let interleaved_rank = InterleavedRank::new(&generated);
+    let mut group = c.benchmark_group("rank_index");
     group.warm_up_time(Duration::from_secs(2));
     group.measurement_time(Duration::from_secs(5));
     group.sample_size(1000);
     for idx in INDICES {
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("naive/{}MiB/2^{}", SIZE / MI_B, idx)),
+            BenchmarkId::from_parameter(format!("interleaved/{}MiB/2^{}", SIZE / MI_B, idx)),
             &idx,
-            |b, size| b.iter(|| naive_rank.rank_0(*size as usize)),
-        );
-        group.bench_with_input(
-            BenchmarkId::from_parameter(format!("lecture/{}MiB/2^{}", SIZE / MI_B, idx)),
-            &idx,
-            |b, size| b.iter(|| lecture_rank.rank_0(*size as usize)),
+            |b, size| b.iter(|| black_box(interleaved_rank.rank0(*size as usize))),
         );
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("block/{}MiB/2^{}", SIZE / MI_B, idx)),
             &idx,
-            |b, size| b.iter(|| block_rank.rank_0(*size as usize)),
+            |b, size| b.iter(|| black_box(block_rank.rank0(*size as usize))),
         );
     }
     group.finish();

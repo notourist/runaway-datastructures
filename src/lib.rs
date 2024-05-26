@@ -7,6 +7,7 @@ pub mod access;
 pub mod query;
 pub mod rank;
 pub mod select;
+pub mod runaway_vector;
 
 pub struct Concrete<A: Accessible, R: Rankable, S: Selectable> {
     a: A,
@@ -19,12 +20,12 @@ impl<A: Accessible, R: Rankable, S: Selectable> Concrete<A, R, S> {
         match query {
             Query::Access(idx) => QueryResult::Access(self.a.access(*idx)),
             Query::Rank(which, idx) => match which {
-                true => QueryResult::Rank(self.r.rank_1(*idx)),
-                false => QueryResult::Rank(self.r.rank_0(*idx)),
+                true => QueryResult::Rank(self.r.rank1(*idx)),
+                false => QueryResult::Rank(self.r.rank0(*idx)),
             },
             Query::Select(which, nth) => match which {
-                true => QueryResult::Select(self.s.select_1(*nth)),
-                false => QueryResult::Select(self.s.select_0(*nth)),
+                true => QueryResult::Select(self.s.select1(*nth)),
+                false => QueryResult::Select(self.s.select0(*nth)),
             },
         }
     }

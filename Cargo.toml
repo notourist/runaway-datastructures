@@ -22,22 +22,6 @@ rand = { version = "0.8.5", features = [ "small_rng" ] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
-name = "select_index"
-path = "benches/select/index.rs"
+name = "rank"
+path = "benches/rank/index.rs"
 harness = false
-
-[[bench]]
-name = "select_length"
-path = "benches/select/length.rs"
-harness = false
-
-[[bench]]
-name = "select_large"
-path = "benches/select/large.rs"
-harness = false
-
-[profile.release]
-debug = true
-
-[profile.dev]
-opt-level = 3
