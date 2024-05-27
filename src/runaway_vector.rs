@@ -13,8 +13,6 @@ const L2_BIT_SIZE: usize = 512;
 const L1_INDEX_BIT_SIZE: usize = 32;
 const L2_INDEX_BIT_SIZE: usize = 10;
 
-const L1_FAST_LINEAR: usize = 1 << 10;
-
 #[derive(Debug)]
 struct InterleavedIndex(u64, usize);
 
@@ -128,7 +126,7 @@ impl<'a> Selectable for RunawayVector<'a> {
         if last_l1 > self.l12_indices.len() - 1 {
             last_l1 = self.l12_indices.len() - 1;
         }
-        /*let mut l = 0;
+        let mut l = 0;
         let mut r = last_l1;
         let mut result = None;
         while l <= r {
@@ -156,27 +154,6 @@ impl<'a> Selectable for RunawayVector<'a> {
         let l1_index = result.unwrap();
         let l12_index = &self.l12_indices[l1_index];
         rank -= l12_index.l1() as usize;
-        */
-        // fast linear backward search
-        let mut l1_sample_index = last_l1;
-        while l1_sample_index >= l0_index * (L0_BIT_SIZE / L1_BIT_SIZE) {
-            let l12_index = &self.l12_indices[l1_sample_index];
-            if rank >= l12_index.l1() as usize {
-                break;
-            }
-            l1_sample_index = l1_sample_index.saturating_sub(L1_FAST_LINEAR);
-        }
-        // slow backward search
-        let mut l1_index = if l1_sample_index + L1_FAST_LINEAR > last_l1 { last_l1 } else { l1_sample_index + L1_FAST_LINEAR };
-        let mut l12_index = &self.l12_indices[l1_index];
-        while l1_index >= l1_sample_index {
-            l12_index = &self.l12_indices[l1_index];
-            if rank >= l12_index.l1() as usize {
-                rank -= l12_index.l1() as usize;
-                break;
-            }
-            l1_index -= 1;
-        }
         if rank == 0 {
             return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE - 1);
         }
