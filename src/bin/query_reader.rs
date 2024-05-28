@@ -7,8 +7,6 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 use std::time::Instant;
 use std::{env, io};
-use bitvec::vec::BitVec;
-use bitvec::view::BitView;
 
 fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
@@ -41,12 +39,12 @@ fn main() -> Result<(), io::Error> {
     let results: Vec<QueryResult> = queries.iter().map(|query| vector.process(query)).collect();
 
     let time = start.elapsed();
-    let space = bit_vec.len() + vector.bit_size();
+    let space = bit_vec.len() + vector.space_usage();
     println!(
         "RESULT name=Nasarek time={:?} space={} overhead={}",
         time,
         space,
-        vector.bit_size() as f64 / space as f64,
+        vector.space_usage() as f64 / space as f64,
     );
 
     let path_output = Path::new(&args[2]);

@@ -30,11 +30,11 @@ pub fn main() {
     //    dbg!(vector.select0(idx));
     //}
     dbg!(vector.select1(1 << 32));
-    let space = rand_bv.len() + vector.bit_size();
+    let space = rand_bv.len() + vector.space_usage();
     println!(
         "RESULT name=Nasarek space={} support_space={} overhead={}",
         space,
-        vector.bit_size(),
-        vector.bit_size() as f64 / space as f64,
+        vector.space_usage(),
+        vector.space_usage() as f64 / space as f64,
     );
 }
