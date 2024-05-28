@@ -1,5 +1,4 @@
 use bitvec::prelude as bv;
-use crate::rank::NaiveRank;
 
 use super::Selectable;
 

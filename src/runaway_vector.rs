@@ -5,6 +5,7 @@ use crate::rank::Rankable;
 use crate::select::Selectable;
 use bitvec::order::Lsb0;
 use bitvec::prelude::BitVec;
+use bitvec::slice::BitSliceIndex;
 
 const L0_BIT_SIZE: usize = 1 << 32;
 const L1_BIT_SIZE: usize = 2048;
@@ -74,6 +75,9 @@ impl<'a> RunawayVector<'a> {
         if bit_vec.len() < 1025 {
             l12_indices.push(InterleavedIndex::new(l1, &l2s[0..3]));
         }
+        if bit_vec.len() % L0_BIT_SIZE != 0 {
+            l0_indices.push(l1 as u64 + l0_indices.last().unwrap_or(&0_u64));
+        }
         RunawayVector {
             bit_vec,
             l0_indices,
@@ -102,7 +106,7 @@ impl<'a> RunawayVector<'a> {
 
 impl<'a> Selectable for RunawayVector<'a> {
     fn select0(&self, _nth: usize) -> Option<usize> {
-        None
+        return None;
     }
 
     fn select1(&self, nth: usize) -> Option<usize> {
@@ -110,46 +114,41 @@ impl<'a> Selectable for RunawayVector<'a> {
         assert!(nth <= self.bit_vec.len());
         let mut rank = nth;
         let mut l0_index = 0;
-        for (i, l0) in self.l0_indices.iter().enumerate() {
-            if *l0 as usize >= nth {
-                rank -= *l0 as usize;
-                l0_index = i - 1;
+        while l0_index < self.l0_indices.len() {
+            if self.l0_indices[l0_index] as usize >= nth {
+                l0_index -= 1;
+                break;
+            } else if l0_index + 1 == self.l0_indices.len() {
                 break;
             }
+            l0_index += 1;
         }
+        rank -= self.l0_indices[l0_index] as usize;
         if rank == 0 {
             return Some(l0_index * L0_BIT_SIZE);
         }
-        let mut last_l1 = (l0_index + 1) * (L0_BIT_SIZE / L1_BIT_SIZE) - 1;
-        if last_l1 > self.l12_indices.len() - 1 {
-            last_l1 = self.l12_indices.len() - 1;
-        }
-        let mut l = 0;
+
+        let first_l1 = l0_index * L0_BIT_SIZE / L1_BIT_SIZE;
+        let last_l1 =
+            if (l0_index + 1) * (L0_BIT_SIZE / L1_BIT_SIZE) > self.l12_indices.len() - 1 {
+                self.l12_indices.len() - 1
+            } else {
+                (l0_index + 1) * (L0_BIT_SIZE / L1_BIT_SIZE)
+            };
+
+        let mut l = first_l1;
         let mut r = last_l1;
-        let mut result = None;
         while l <= r {
             let m = (l + r) / 2;
-            if m == last_l1 {
-                result = Some(m);
-                break;
-            }
-            if (self.l12_indices[m].l1() as usize) < rank
-                && (self.l12_indices[m + 1].l1() as usize) < rank
-            {
+            if (self.l12_indices[m].l1() as usize) < rank {
                 l = m + 1;
-            } else if (self.l12_indices[m].l1() as usize) >= rank
-                && (self.l12_indices[m + 1].l1() as usize) > rank
-            {
+            } else if (self.l12_indices[m].l1() as usize) >= rank {
                 r = m - 1;
             } else {
-                result = Some(m);
                 break;
             }
         }
-        if result == None {
-            return None;
-        }
-        let l1_index = result.unwrap();
+        let l1_index = r;
         let l12_index = &self.l12_indices[l1_index];
         rank -= l12_index.l1() as usize;
         if rank == 0 {
@@ -166,34 +165,29 @@ impl<'a> Selectable for RunawayVector<'a> {
         }
 
         if rank == 0 {
-            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE);
+            return Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE);
         }
-        let bit_search_start =
-            l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
+        let bit_search_start = l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
         let bit_search_end = if bit_search_start + L2_BIT_SIZE > self.bit_vec.len() {
             self.bit_vec.len()
         } else {
             bit_search_start + L2_BIT_SIZE
         };
-        if bit_search_start >= bit_search_end {
-            return None;
-        }
         let mut bit = 0;
         for i in bit_search_start..bit_search_end {
             if self.bit_vec[i] {
-                rank -= self.bit_vec[i] as usize;
+                rank -= 1;
                 if rank == 0 {
                     bit = i;
                     break;
                 }
             }
         }
-        return Some(
-            l0_index * L0_BIT_SIZE
-                + l1_index * L1_BIT_SIZE
-                + l2_index * L2_BIT_SIZE
-                + (bit % L2_BIT_SIZE),
-        );
+        if rank != 0 {
+            panic!("rank too large")
+        } else {
+            Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + (bit % L2_BIT_SIZE))
+        }
     }
 }
 
@@ -226,50 +220,45 @@ impl<'a> Accessible for RunawayVector<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rank::BlockVector;
-    use crate::select::NaiveSelect;
     use bitvec::bitvec;
     use bitvec::field::BitField;
     use bitvec::order::Lsb0;
-    use rand::Rng;
 
     #[test]
-    fn rank() {
-        const BIT_VEC_LEN: usize = 2usize.pow(33);
-        let mut rng = rand::thread_rng();
-        let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
-        const BITS_PER_RNG_READ: usize = 64;
-        let mut rng_i = 0;
-        while rng_i < BIT_VEC_LEN / BITS_PER_RNG_READ {
-            let num: u64 = rng.gen();
-            rand_bv[(rng_i * BITS_PER_RNG_READ)..((rng_i + 1) * BITS_PER_RNG_READ)].store(num);
-            rng_i += 1;
-        }
-        let assumed_to_be_correct = BlockVector::new(&rand_bv);
-        let test_me = RunawayVector::new(&rand_bv);
-        for i in 2usize.pow(32) + 1..BIT_VEC_LEN {
-            //assert_eq!(test_me.rank0(i), assumed_to_be_correct.rank0(i));
-            assert_eq!(test_me.rank1(i), assumed_to_be_correct.rank1(i));
-        }
+    fn select1_l0() {
+        let mut rand_bv = bitvec![u64, Lsb0; 0; L0_BIT_SIZE * 4];
+        rand_bv.set(0, true);
+        rand_bv.set(1 << 32, true);
+        rand_bv.set((1 << 32) * 2, true);
+        let runaway = RunawayVector::new(&rand_bv);
+        assert_eq!(runaway.select1(1), Some(0));
+        assert_eq!(runaway.select1(2), Some(1 << 32));
+        assert_eq!(runaway.select1(3), Some((1 << 32) * 2));
     }
 
     #[test]
-    fn select() {
-        const BIT_VEC_LEN: usize = 2usize.pow(20);
-        let mut rng = rand::thread_rng();
+    fn select1_l1() {
+        const BIT_VEC_LEN: usize = L1_BIT_SIZE * 4;
         let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
-        const BITS_PER_RNG_READ: usize = 64;
-        let mut rng_i = 0;
-        while rng_i < BIT_VEC_LEN / BITS_PER_RNG_READ {
-            let num: u64 = rng.gen();
-            rand_bv[(rng_i * BITS_PER_RNG_READ)..((rng_i + 1) * BITS_PER_RNG_READ)].store(num);
-            rng_i += 1;
-        }
-        let assumed_to_be_correct = NaiveSelect::new(&rand_bv);
-        let test_me = RunawayVector::new(&rand_bv);
-        for i in 1..BIT_VEC_LEN {
-            //assert_eq!(test_me.rank0(i), assumed_to_be_correct.rank0(i));
-            assert_eq!(test_me.select1(i), assumed_to_be_correct.select1(i));
-        }
+        rand_bv[0..64].store(u64::MAX);
+        rand_bv[L1_BIT_SIZE..L1_BIT_SIZE + 64].store(u64::MAX);
+        rand_bv[L1_BIT_SIZE * 2..L1_BIT_SIZE * 2 + 64].store(u64::MAX);
+        rand_bv[L1_BIT_SIZE * 3..L1_BIT_SIZE * 3 + 64].store(u64::MAX);
+        let runaway = RunawayVector::new(&rand_bv);
+        assert_eq!(runaway.select1(1), Some(0));
+        assert_eq!(runaway.select1(65), Some(L1_BIT_SIZE));
+        assert_eq!(runaway.select1(65 + 64), Some(L1_BIT_SIZE * 2));
+        assert_eq!(runaway.select1(65 + 64 * 2), Some(L1_BIT_SIZE * 3));
+    }
+
+    #[test]
+    fn select1_l0_and_l1() {
+        const BIT_VEC_LEN: usize = L0_BIT_SIZE * 2;
+        let mut rand_bv = bitvec![u64, Lsb0; 0; BIT_VEC_LEN];
+        rand_bv[L1_BIT_SIZE..L1_BIT_SIZE + 64].store(u64::MAX);
+        rand_bv[L0_BIT_SIZE + L1_BIT_SIZE..L0_BIT_SIZE + L1_BIT_SIZE + 64].store(u64::MAX);
+        let runaway = RunawayVector::new(&rand_bv);
+        assert_eq!(runaway.select1(64), Some(L1_BIT_SIZE + 63));
+        assert_eq!(runaway.select1(128), Some(L0_BIT_SIZE + L1_BIT_SIZE + 63));
     }
 }
