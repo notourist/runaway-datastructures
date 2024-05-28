@@ -1,6 +1,4 @@
 use crate::access::Accessible;
-use crate::rank::Rankable;
-use crate::select::Selectable;
 use Query::*;
 
 #[derive(Debug, Eq, PartialEq)]

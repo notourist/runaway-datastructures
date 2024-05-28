@@ -1,9 +1,6 @@
 use bitvec::bitvec;
 use bitvec::order::Lsb0;
-use runaway_datastructures::access::DirectAccess;
 use runaway_datastructures::query::{Query, QueryResult};
-use runaway_datastructures::rank::BlockVector;
-use runaway_datastructures::select::NoSelect;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, Write};
 use std::path::Path;
@@ -35,20 +32,18 @@ fn main() -> Result<(), io::Error> {
         .collect();
 
     let start = Instant::now();
-
     let vector = RunawayVector::new(&bit_vec);
-
     let results: Vec<QueryResult> = queries
         .iter()
         .map(|query| vector.process(query))
         .collect();
+
     let time = start.elapsed();
     let space = bit_vec.len() + vector.bit_size();
     println!(
-        "RESULT name=Nasarek time={:?} space={} support_space={} overhead={}",
+        "RESULT name=Nasarek time={:?} space={} overhead={}",
         time,
         space,
-        vector.bit_size(),
         vector.bit_size() as f64 / space as f64,
     );
 

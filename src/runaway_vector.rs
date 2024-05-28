@@ -57,9 +57,10 @@ impl<'a> RunawayVector<'a> {
         let mut l0: u64 = 0;
         let mut l1: u32 = 0;
         let mut l2s: [u16; 4] = [0; 4];
+        // FIXME l1 reset
         for (i, chunk) in bit_vec.chunks(L2_BIT_SIZE).enumerate() {
             if i % (L0_BIT_SIZE / L2_BIT_SIZE) == 0 {
-                l0_indices.push(l0);
+                l0_indices.push(l1 as u64 + l0_indices.last().unwrap_or(&0_u64));
                 l1 = 0;
             }
             let l2_pos = i % 4;
@@ -68,7 +69,6 @@ impl<'a> RunawayVector<'a> {
             if i % (L1_BIT_SIZE / L2_BIT_SIZE) == 3 {
                 l12_indices.push(InterleavedIndex::new(l1, &l2s[0..3]));
                 l1 = l1 + l2s[0] as u32 + l2s[1] as u32 + l2s[2] as u32 + l2s[3] as u32;
-                l0 += l1 as u64;
                 l2s = [0; 4];
             }
         }
@@ -103,7 +103,7 @@ impl<'a> RunawayVector<'a> {
 }
 
 impl<'a> Selectable for RunawayVector<'a> {
-    fn select0(&self, nth: usize) -> Option<usize> {
+    fn select0(&self, _nth: usize) -> Option<usize> {
         None
     }
 
@@ -115,12 +115,12 @@ impl<'a> Selectable for RunawayVector<'a> {
         for (i, l0) in self.l0_indices.iter().enumerate() {
             if *l0 as usize >= nth {
                 rank -= *l0 as usize;
-                l0_index = i;
+                l0_index = i - 1;
                 break;
             }
         }
         if rank == 0 {
-            return Some(l0_index * L0_BIT_SIZE - 1);
+            return Some(l0_index * L0_BIT_SIZE);
         }
         let mut last_l1 = (l0_index + 1) * (L0_BIT_SIZE / L1_BIT_SIZE) - 1;
         if last_l1 > self.l12_indices.len() - 1 {
@@ -131,7 +131,7 @@ impl<'a> Selectable for RunawayVector<'a> {
         let mut result = None;
         while l <= r {
             let m = (l + r) / 2;
-            if m + 1 > last_l1 {
+            if m == last_l1 {
                 result = Some(m);
                 break;
             }
@@ -140,7 +140,7 @@ impl<'a> Selectable for RunawayVector<'a> {
             {
                 l = m + 1;
             } else if (self.l12_indices[m].l1() as usize) >= rank
-                && (self.l12_indices[m + 1].l1() as usize) >= rank
+                && (self.l12_indices[m + 1].l1() as usize) > rank
             {
                 r = m - 1;
             } else {
@@ -155,7 +155,7 @@ impl<'a> Selectable for RunawayVector<'a> {
         let l12_index = &self.l12_indices[l1_index];
         rank -= l12_index.l1() as usize;
         if rank == 0 {
-            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE - 1);
+            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE);
         }
         let mut l2_index = 0;
         for i in 0..l12_index.len() {
@@ -168,9 +168,7 @@ impl<'a> Selectable for RunawayVector<'a> {
         }
 
         if rank == 0 {
-            return Some(
-                l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE - 1,
-            );
+            return Some(l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE);
         }
         let bit_search_start =
             l0_index * L0_BIT_SIZE + l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
