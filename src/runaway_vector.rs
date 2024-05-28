@@ -54,10 +54,8 @@ impl<'a> RunawayVector<'a> {
         let mut l0_indices: Vec<u64> = Vec::with_capacity(l0_capacity);
         let mut l12_indices: Vec<InterleavedIndex> = Vec::with_capacity(l12_capacity);
 
-        let mut l0: u64 = 0;
         let mut l1: u32 = 0;
         let mut l2s: [u16; 4] = [0; 4];
-        // FIXME l1 reset
         for (i, chunk) in bit_vec.chunks(L2_BIT_SIZE).enumerate() {
             if i % (L0_BIT_SIZE / L2_BIT_SIZE) == 0 {
                 l0_indices.push(l1 as u64 + l0_indices.last().unwrap_or(&0_u64));
