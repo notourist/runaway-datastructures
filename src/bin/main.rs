@@ -6,7 +6,6 @@ use bitvec::field::BitField;
 use bitvec::order::Lsb0;
 use rand::{Rng, thread_rng};
 use runaway_datastructures::runaway_vector::RunawayVector;
-use runaway_datastructures::select::Selectable;
 
 pub fn main() {
     const BIT_VEC_LEN: usize = 1usize << 34;

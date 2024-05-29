@@ -16,35 +16,26 @@ fn main() -> Result<(), io::Error> {
     let mut bit_vec = bitvec![u64, Lsb0;];
 
     lines.next();
-    let read_time = Instant::now();
     let second_line = lines.next().unwrap();
     second_line
         .trim()
         .chars()
-        .map(|char| match char {
-            '1' => true,
-            _ => false,
-        })
+        .map(|char| matches!(char, '1'))
         .for_each(|bool| bit_vec.push(bool));
 
     let queries: Vec<Query> = lines
         .map(|line| Query::try_from(line.as_str()).unwrap())
         .collect();
-    println!("read_time={:?}", read_time.elapsed());
-
     let start = Instant::now();
-    let build_time = Instant::now();
     let vector = RunawayVector::new(&bit_vec);
-    println!("build_time={:?}", build_time.elapsed());
     let results: Vec<QueryResult> = queries.iter().map(|query| vector.process(query)).collect();
 
     let time = start.elapsed();
     let space = bit_vec.len() + vector.space_usage();
     println!(
-        "RESULT name=Nasarek time={:?} space={} overhead={}",
-        time,
+        "RESULT name=Nasarek time={:?} space={}",
+        time.as_millis(),
         space,
-        vector.space_usage() as f64 / space as f64,
     );
 
     let path_output = Path::new(&args[2]);
