@@ -1,3 +1,18 @@
+//! # RunawayVector
+//!
+//! This succinct bit vector with rank and select support was originally presented by
+//! [Zhou et al.](https://doi.org/10.1007/978-3-642-38527-8) It has a space overhead of `o(n)` and
+//! answers rank and select queries in `O(1)`.
+//!
+//! # Internal structure and space usage
+//! This bit vector uses three indices
+//!
+//! # Initialization
+//!
+//! # Rank
+//!
+//! # Select
+//!
 use crate::query::Query::{Access, Rank, Select};
 use crate::query::{Query, QueryResult};
 use bitvec::order::Lsb0;
@@ -18,7 +33,7 @@ struct InterleavedIndex(u64, usize);
 
 impl InterleavedIndex {
     pub fn new(l1: u32, l2s: &[u16]) -> Self {
-        assert!(l2s.len() <= 3);
+        assert!(l2s.len() < 4);
         let mut value = l1 as u64;
 
         for (i, l2) in l2s.iter().enumerate() {
@@ -62,26 +77,30 @@ impl<'a> RunawayVector<'a> {
         let mut l1: u32 = 0;
         let mut l2s: [u16; 4] = [0; 4];
         let mut l2_len = 0;
+        // Iterate over each L2 block
         for (i, chunk) in bit_vec.chunks(L2_BIT_SIZE).enumerate() {
             let l2_pos = i % 4;
-            let one_l2 = chunk.count_ones() as u16;
-            l2s[l2_pos] = one_l2;
+            l2s[l2_pos] = chunk.count_ones() as u16;
             l2_len += 1;
+            // We are at the last l2 block and need to update the interleaved index.
             if i % (L1_BIT_SIZE / L2_BIT_SIZE) == 3 {
                 l12_indices.push(InterleavedIndex::new(l1, &l2s[0..l2_len - 1]));
                 l1 = l1 + l2s[0] as u32 + l2s[1] as u32 + l2s[2] as u32 + l2s[3] as u32;
                 l2s = [0; 4];
                 l2_len = 0;
             }
+            // We are at the end of the L0 block and need to append the L0 bit count
             if i % (L0_BIT_SIZE / L2_BIT_SIZE) == (L0_BIT_SIZE / L2_BIT_SIZE) - 1 {
                 l0_indices.push(l0);
                 l0 += l1 as u64;
                 l1 = 0;
             }
         }
+        // Fix, if the vector length < L1 block length
         if bit_vec.len() % L1_BIT_SIZE != 0 {
             l12_indices.push(InterleavedIndex::new(l1, &l2s[0..l2_len]));
         }
+        // Fix, if the vector length < L0 block length
         if bit_vec.len() % L0_BIT_SIZE != 0 {
             l0_indices.push(l0);
         }
@@ -112,6 +131,8 @@ impl<'a> RunawayVector<'a> {
         let mut rank = nth;
         let mut l0_index = 0;
         while l0_index < self.l0_indices.len() {
+            // As the indices store the amount of ones we need to subtract each index from
+            // the total amount of bits ot get the amount of zeros inside a block.
             if l0_index * L0_BIT_SIZE - self.l0_indices[l0_index] as usize >= nth {
                 l0_index -= 1;
                 break;
@@ -135,11 +156,10 @@ impl<'a> RunawayVector<'a> {
         let mut r = last_l1;
         while l <= r {
             let m = (l + r) / 2;
-            if ((m % L1_IN_L0_COUNT) * L1_BIT_SIZE - self.l12_indices[m].l1() as usize) < rank {
+            let l1_bit_count = (m % L1_IN_L0_COUNT) * L1_BIT_SIZE;
+            if (l1_bit_count - self.l12_indices[m].l1() as usize) < rank {
                 l = m + 1;
-            } else if ((m % L1_IN_L0_COUNT) * L1_BIT_SIZE - self.l12_indices[m].l1() as usize)
-                >= rank
-            {
+            } else if (l1_bit_count - self.l12_indices[m].l1() as usize) >= rank {
                 r = m - 1;
             } else {
                 break;
@@ -147,13 +167,13 @@ impl<'a> RunawayVector<'a> {
         }
         let l1_index = r;
         let l12_index = &self.l12_indices[l1_index];
-        // Same as problem as with L0
+        // Same problem as with L0 index.
         if l1_index % L1_IN_L0_COUNT != 0 {
             rank -= (l1_index % L1_IN_L0_COUNT) * L1_BIT_SIZE - l12_index.l1() as usize
         }
         let mut l2_index = 0;
         for i in 0..l12_index.len() {
-            // In contrast to L0 and L1 indices L2 indices contain the number of a single block
+            // In contrast to L0 and L1 indices L2 indices contain the number of ones in a single block
             // and are not incremental. We therefor calculate the number of zeros by subtracting
             // the number of ones from the L2 size.
             if rank > L2_BIT_SIZE - l12_index.index(i) as usize {
@@ -176,12 +196,6 @@ impl<'a> RunawayVector<'a> {
             }
         }
         if rank != 0 {
-            dbg!(rank);
-            dbg!(l0_index);
-            dbg!(l1_index);
-            dbg!(l2_index);
-            dbg!(bit_search_start);
-            dbg!(bit_search_end);
             panic!("rank too large")
         } else {
             Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + (bit % L2_BIT_SIZE))
@@ -193,6 +207,9 @@ impl<'a> RunawayVector<'a> {
         assert!(nth <= self.bit_vec.len());
         let mut rank = nth;
         let mut l0_index = 0;
+        // Search the L0 index with a linear search from the first ot the last L0 index.
+        // If the L0 index is at one point larger than the queried rank, we use the previous
+        // L0 index in which the queried position must reside.
         while l0_index < self.l0_indices.len() {
             if self.l0_indices[l0_index] as usize >= nth {
                 l0_index -= 1;
@@ -204,14 +221,18 @@ impl<'a> RunawayVector<'a> {
         }
         rank -= self.l0_indices[l0_index] as usize;
 
+        // Now find the L1 index in the L0 block with a binary search.
         let first_l1 = l0_index * L1_IN_L0_COUNT;
         let last_l1 = if (l0_index + 1) * L1_IN_L0_COUNT > self.l12_indices.len() - 1 {
+            // We need to limit the L1 index for the binary search if our current L0
+            // block is not complete.
             self.l12_indices.len() - 1
         } else {
             (l0_index + 1) * L1_IN_L0_COUNT
         };
         let mut l = first_l1;
         let mut r = last_l1;
+        // Binary search for the correct L1 block.
         while l <= r {
             let m = (l + r) / 2;
             if (self.l12_indices[m].l1() as usize) < rank {
@@ -227,6 +248,8 @@ impl<'a> RunawayVector<'a> {
         rank -= l12_index.l1() as usize;
         let mut l2_index = 0;
         for i in 0..l12_index.len() {
+            // As long as our L2 index is smaller than our rank, we subtract the number of ones
+            // from our rank and look at the next L2 block.
             if rank > l12_index.index(i) as usize {
                 rank -= l12_index.index(i) as usize;
                 l2_index += 1;
@@ -235,6 +258,7 @@ impl<'a> RunawayVector<'a> {
             }
         }
 
+        // We are now inside a L2 block and do a linear search for the position of the bit.
         let bit_search_start = l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
         let bit_search_end = self.bit_vec.len();
         let mut bit = 0;
@@ -247,13 +271,9 @@ impl<'a> RunawayVector<'a> {
                 }
             }
         }
+        // If the rank is not 0 we missed some indices/bits and the algorithm is broken or the
+        // queried bit with such a rank does not exist.
         if rank != 0 {
-            dbg!(rank);
-            dbg!(l0_index);
-            dbg!(l1_index);
-            dbg!(l2_index);
-            dbg!(bit_search_start);
-            dbg!(bit_search_end);
             panic!("rank too large")
         } else {
             Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + (bit % L2_BIT_SIZE))
@@ -350,7 +370,7 @@ mod tests {
         assert_eq!(runaway.l0_indices[2], 2 * u32::MAX as u64);
         assert_eq!(runaway.select0(1), Some(0));
         assert_eq!(runaway.select0(2), Some(1 << 32));
-        //assert_eq!(runaway.select0(3), Some((1 << 32) * 2));
+        assert_eq!(runaway.select0(3), Some((1 << 32) * 2));
     }
 
     #[test]
