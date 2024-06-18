@@ -125,15 +125,14 @@ impl<'a> RunawayVector<'a> {
         }
     }
 
-    pub fn select0(&self, nth: usize) -> Option<usize> {
-        assert!(nth > 0);
-        assert!(nth <= self.bit_vec.len());
-        let mut rank = nth;
+    pub fn select0(&self, mut rank: usize) -> Option<usize> {
+        assert!(rank > 0);
+        assert!(rank <= self.bit_vec.len());
         let mut l0_index = 0;
         while l0_index < self.l0_indices.len() {
             // As the indices store the amount of ones we need to subtract each index from
             // the total amount of bits ot get the amount of zeros inside a block.
-            if l0_index * L0_BIT_SIZE - self.l0_indices[l0_index] as usize >= nth {
+            if l0_index * L0_BIT_SIZE - self.l0_indices[l0_index] as usize >= rank {
                 l0_index -= 1;
                 break;
             } else if l0_index + 1 == self.l0_indices.len() {
@@ -196,22 +195,22 @@ impl<'a> RunawayVector<'a> {
             }
         }
         if rank != 0 {
-            panic!("rank too large")
+            debug_assert!(false, "rank too large");
+            None
         } else {
-            Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + (bit % L2_BIT_SIZE))
+            Some(bit)
         }
     }
 
-    pub fn select1(&self, nth: usize) -> Option<usize> {
-        assert!(nth > 0);
-        assert!(nth <= self.bit_vec.len());
-        let mut rank = nth;
+    pub fn select1(&self, mut rank: usize) -> Option<usize> {
+        assert!(rank > 0);
+        assert!(rank <= self.bit_vec.len());
         let mut l0_index = 0;
         // Search the L0 index with a linear search from the first ot the last L0 index.
         // If the L0 index is at one point larger than the queried rank, we use the previous
         // L0 index in which the queried position must reside.
         while l0_index < self.l0_indices.len() {
-            if self.l0_indices[l0_index] as usize >= nth {
+            if self.l0_indices[l0_index] as usize >= rank {
                 l0_index -= 1;
                 break;
             } else if l0_index + 1 == self.l0_indices.len() {
@@ -274,9 +273,10 @@ impl<'a> RunawayVector<'a> {
         // If the rank is not 0 we missed some indices/bits and the algorithm is broken or the
         // queried bit with such a rank does not exist.
         if rank != 0 {
-            panic!("rank too large")
+            debug_assert!(false, "rank too large");
+            None
         } else {
-            Some(l1_index * L1_BIT_SIZE + l2_index * L2_BIT_SIZE + (bit % L2_BIT_SIZE))
+            Some(bit)
         }
     }
 
