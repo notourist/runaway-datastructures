@@ -8,24 +8,30 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Instant;
 use std::{env, io};
+use std::ops::Sub;
 
 fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
     let path_input = Path::new(&args[1]);
     let file_input = File::open(path_input)?;
-    let read_time = Instant::now();
-    let (queries, bit_vec) = read_file(file_input)?;
-    let read_elapsed = read_time.elapsed();
     let start = Instant::now();
+    let (queries, bit_vec) = read_file(file_input)?;
+
+    let read_elapsed = start.elapsed();
+
     let vector = RunawayVector::new(&bit_vec);
-    let build = start.elapsed();
+
+    let build_elapsed = start.elapsed();
+
     let results: Vec<QueryResult> = queries.iter().map(|query| vector.process(query)).collect();
-    let time = start.elapsed();
+
+    let build_and_process_elapsed = start.elapsed();
+
     let space = bit_vec.len() + vector.space_usage();
     println!(
         "RESULT name=Nasarek time={:?} build={:?} read={:?} space={} overhead={}",
-        time.as_millis(),
-        build.as_millis(),
+        build_and_process_elapsed.sub(read_elapsed).as_millis(),
+        build_elapsed.sub(read_elapsed).as_millis(),
         read_elapsed.as_millis(),
         space,
         space as f64 / bit_vec.len() as f64,

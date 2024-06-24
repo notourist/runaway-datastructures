@@ -13,3 +13,8 @@ target/
 *.pdb
 
 .idea
+
+out.txt
+expected.txt
+commands.txt
+results.txt
