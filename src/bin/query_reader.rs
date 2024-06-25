@@ -12,7 +12,7 @@ fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
     let input_file = File::open(Path::new(&args[1]))?;
     let mut queries = Vec::new();
-    let mut bit_vec = BitVec::with_capacity(32000);
+    let mut bit_vec = BitVec::new();
 
     let start = Instant::now();
 
@@ -20,19 +20,17 @@ fn main() -> Result<(), io::Error> {
     let mut line = String::new();
     let mut line_count = 0;
     while reader.read_line(&mut line)? != 0 {
-        if line_count == 0 {
-            line_count += 1;
-            continue;
-        } else if line_count == 1 {
+        if line_count == 1 {
+            println!("{line}");
             line.chars()
-                .filter(|c| c != &'\n')
+                .filter(|c| *c != '\n')
                 .map(|char| match char {
                     '1' => true,
                     '0' => false,
                     _ => unreachable!(),
                 })
                 .for_each(|bool| bit_vec.push(bool));
-        } else {
+        } else if line_count > 1 {
             queries.push(Query::try_from(line.as_str()).unwrap());
         }
         line_count += 1;
