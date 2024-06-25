@@ -21,7 +21,6 @@ fn main() -> Result<(), io::Error> {
     let mut line_count = 0;
     while reader.read_line(&mut line)? != 0 {
         if line_count == 1 {
-            println!("{line}");
             line.chars()
                 .filter(|c| *c != '\n')
                 .map(|char| match char {
