@@ -17,7 +17,7 @@ use crate::query::Query::{Access, Rank, Select};
 use crate::query::{Query, QueryResult};
 use bitvec::order::Lsb0;
 use bitvec::prelude::BitVec;
-use std::mem;
+use std::{cmp, mem};
 
 const L0_BIT_SIZE: usize = 1 << 32;
 const L1_BIT_SIZE: usize = 2048;
@@ -128,29 +128,21 @@ impl<'a> RunawayVector<'a> {
     pub fn select0(&self, mut rank: usize) -> Option<usize> {
         assert!(rank > 0);
         assert!(rank <= self.bit_vec.len());
-        let mut l0_index = 0;
-        while l0_index < self.l0_indices.len() {
-            // As the indices store the amount of ones we need to subtract each index from
-            // the total amount of bits ot get the amount of zeros inside a block.
-            if l0_index * L0_BIT_SIZE - self.l0_indices[l0_index] as usize >= rank {
-                l0_index -= 1;
-                break;
-            } else if l0_index + 1 == self.l0_indices.len() {
-                break;
-            }
-            l0_index += 1;
+        let mut l0_pos = 0;
+        // As the indices store the amount of ones we need to subtract each index from
+        // the total amount of bits ot get the amount of zeros inside a block.
+        while l0_pos + 1 < self.l0_indices.len()
+            && ((l0_pos + 1) * L0_BIT_SIZE - self.l0_indices[l0_pos + 1] as usize) < rank
+        {
+            l0_pos += 1;
         }
         // The first L0 index is always zero. In this case we cannot subtract the amount of L0 indices
         // from the amount of ones which came before this index because there are none.
-        if l0_index != 0 {
-            rank -= l0_index * L0_BIT_SIZE - self.l0_indices[l0_index] as usize;
+        if l0_pos != 0 {
+            rank -= l0_pos * L0_BIT_SIZE - self.l0_indices[l0_pos] as usize;
         }
-        let first_l1 = l0_index * L1_IN_L0_COUNT;
-        let last_l1 = if (l0_index + 1) * L1_IN_L0_COUNT > self.l12_indices.len() - 1 {
-            self.l12_indices.len() - 1
-        } else {
-            (l0_index + 1) * L1_IN_L0_COUNT
-        };
+        let first_l1 = l0_pos * L1_IN_L0_COUNT;
+        let last_l1 = cmp::min((l0_pos + 1) * L1_IN_L0_COUNT, self.l12_indices.len() - 1);
         let mut l = first_l1;
         let mut r = last_l1;
         while l <= r {
@@ -164,25 +156,25 @@ impl<'a> RunawayVector<'a> {
                 break;
             }
         }
-        let l1_index = r;
-        let l12_index = &self.l12_indices[l1_index];
+        let l1_pos = r;
+        let l12_index = &self.l12_indices[l1_pos];
         // Same problem as with L0 index.
-        if l1_index % L1_IN_L0_COUNT != 0 {
-            rank -= (l1_index % L1_IN_L0_COUNT) * L1_BIT_SIZE - l12_index.l1() as usize
+        if l1_pos % L1_IN_L0_COUNT != 0 {
+            rank -= (l1_pos % L1_IN_L0_COUNT) * L1_BIT_SIZE - l12_index.l1() as usize
         }
-        let mut l2_index = 0;
+        let mut l2_pos = 0;
         for i in 0..l12_index.len() {
             // In contrast to L0 and L1 indices L2 indices contain the number of ones in a single block
             // and are not incremental. We therefor calculate the number of zeros by subtracting
             // the number of ones from the L2 size.
             if rank > L2_BIT_SIZE - l12_index.index(i) as usize {
                 rank -= L2_BIT_SIZE - l12_index.index(i) as usize;
-                l2_index += 1;
+                l2_pos += 1;
             } else {
                 break;
             }
         }
-        let bit_search_start = l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
+        let bit_search_start = l1_pos * L1_BIT_SIZE + (l2_pos) * L2_BIT_SIZE;
         let bit_search_end = self.bit_vec.len();
         let mut bit = 0;
         for i in bit_search_start..bit_search_end {
@@ -205,30 +197,18 @@ impl<'a> RunawayVector<'a> {
     pub fn select1(&self, mut rank: usize) -> Option<usize> {
         assert!(rank > 0);
         assert!(rank <= self.bit_vec.len());
-        let mut l0_index = 0;
+        let mut l0_pos = 0;
         // Search the L0 index with a linear search from the first ot the last L0 index.
         // If the L0 index is at one point larger than the queried rank, we use the previous
         // L0 index in which the queried position must reside.
-        while l0_index < self.l0_indices.len() {
-            if self.l0_indices[l0_index] as usize >= rank {
-                l0_index -= 1;
-                break;
-            } else if l0_index + 1 == self.l0_indices.len() {
-                break;
-            }
-            l0_index += 1;
+        while l0_pos + 1 < self.l0_indices.len() && (self.l0_indices[l0_pos + 1] as usize) < rank {
+            l0_pos += 1;
         }
-        rank -= self.l0_indices[l0_index] as usize;
+        rank -= self.l0_indices[l0_pos] as usize;
 
         // Now find the L1 index in the L0 block with a binary search.
-        let first_l1 = l0_index * L1_IN_L0_COUNT;
-        let last_l1 = if (l0_index + 1) * L1_IN_L0_COUNT > self.l12_indices.len() - 1 {
-            // We need to limit the L1 index for the binary search if our current L0
-            // block is not complete.
-            self.l12_indices.len() - 1
-        } else {
-            (l0_index + 1) * L1_IN_L0_COUNT
-        };
+        let first_l1 = l0_pos * L1_IN_L0_COUNT;
+        let last_l1 = cmp::min((l0_pos + 1) * L1_IN_L0_COUNT, self.l12_indices.len() - 1);
         let mut l = first_l1;
         let mut r = last_l1;
         // Binary search for the correct L1 block.
@@ -242,23 +222,23 @@ impl<'a> RunawayVector<'a> {
                 break;
             }
         }
-        let l1_index = r;
-        let l12_index = &self.l12_indices[l1_index];
+        let l1_pos = r;
+        let l12_index = &self.l12_indices[l1_pos];
         rank -= l12_index.l1() as usize;
-        let mut l2_index = 0;
+        let mut l2_pos = 0;
         for i in 0..l12_index.len() {
             // As long as our L2 index is smaller than our rank, we subtract the number of ones
             // from our rank and look at the next L2 block.
             if rank > l12_index.index(i) as usize {
                 rank -= l12_index.index(i) as usize;
-                l2_index += 1;
+                l2_pos += 1;
             } else {
                 break;
             }
         }
 
         // We are now inside a L2 block and do a linear search for the position of the bit.
-        let bit_search_start = l1_index * L1_BIT_SIZE + (l2_index) * L2_BIT_SIZE;
+        let bit_search_start = l1_pos * L1_BIT_SIZE + (l2_pos) * L2_BIT_SIZE;
         let bit_search_end = self.bit_vec.len();
         let mut bit = 0;
         for i in bit_search_start..bit_search_end {

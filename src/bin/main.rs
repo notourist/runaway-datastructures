@@ -4,7 +4,7 @@ extern crate runaway_datastructures;
 use bitvec::bitvec;
 use bitvec::field::BitField;
 use bitvec::order::Lsb0;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 use runaway_datastructures::runaway_vector::RunawayVector;
 
 pub fn main() {
