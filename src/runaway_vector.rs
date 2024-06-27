@@ -4,15 +4,6 @@
 //! [Zhou et al.](https://doi.org/10.1007/978-3-642-38527-8) It has a space overhead of `o(n)` and
 //! answers rank and select queries in `O(1)`.
 //!
-//! # Internal structure and space usage
-//! This bit vector uses three indices
-//!
-//! # Initialization
-//!
-//! # Rank
-//!
-//! # Select
-//!
 use crate::query::Query::{Access, Rank, Select};
 use crate::query::{Query, QueryResult};
 use bitvec::order::Lsb0;

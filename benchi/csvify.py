@@ -1,6 +1,6 @@
 import re
 
-with open("results.txt", "r") as f:
+with open("hetzner.txt", "r") as f:
     csv_lines = ["name,time,build,read,space,overhead,bits"]
     for line in f.readlines():
         line = line.strip()
