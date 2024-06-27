@@ -166,9 +166,19 @@ impl<'a> RunawayVector<'a> {
             }
         }
         let bit_search_start = l1_pos * L1_BIT_SIZE + (l2_pos) * L2_BIT_SIZE;
-        let bit_search_end = self.bit_vec.len();
+        let bit_search_end = cmp::min(bit_search_start + L1_BIT_SIZE, self.bit_vec.len());
+
+        let mut u64_pos = 0;
+        while rank > 64 && u64_pos < 8 {
+            let ones = self.bit_vec
+                [bit_search_start + 64 * u64_pos..bit_search_start + 64 * (u64_pos + 1)]
+                .count_zeros();
+            rank -= ones;
+            u64_pos += 1;
+        }
+
         let mut bit = 0;
-        for i in bit_search_start..bit_search_end {
+        for i in bit_search_start + 64 * u64_pos..bit_search_end {
             if !self.bit_vec[i] {
                 rank -= 1;
                 if rank == 0 {
@@ -230,9 +240,21 @@ impl<'a> RunawayVector<'a> {
 
         // We are now inside a L2 block and do a linear search for the position of the bit.
         let bit_search_start = l1_pos * L1_BIT_SIZE + (l2_pos) * L2_BIT_SIZE;
-        let bit_search_end = self.bit_vec.len();
+        let bit_search_end = cmp::min(bit_search_start + L1_BIT_SIZE, self.bit_vec.len());
+
+        // Fast 64 bit search
+        let mut u64_pos = 0;
+        while rank > 64 && u64_pos < 8 {
+            let ones = self.bit_vec
+                [bit_search_start + 64 * u64_pos..bit_search_start + 64 * (u64_pos + 1)]
+                .count_ones();
+            rank -= ones;
+            u64_pos += 1;
+        }
+
+        // Slow search inside a 64 bit block
         let mut bit = 0;
-        for i in bit_search_start..bit_search_end {
+        for i in bit_search_start + 64 * u64_pos..bit_search_end {
             if self.bit_vec[i] {
                 rank -= 1;
                 if rank == 0 {
