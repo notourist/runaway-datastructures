@@ -12,7 +12,6 @@ pub struct NaiveVector<'a> {
 
 impl<'a> NaiveVector<'a> {
     pub fn new(bit_vec: &'a BitVec<u64, Lsb0>, block_size: usize) -> Self {
-        assert!(bit_vec.len() > block_size);
         let mut blocks = Vec::with_capacity((bit_vec.len() / block_size) + 1);
         let mut incremental = 0;
         for chunk in bit_vec.chunks(block_size) {
