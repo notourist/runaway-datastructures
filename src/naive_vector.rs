@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, mem};
 use bitvec::order::Lsb0;
 use bitvec::prelude::BitVec;
 use crate::query::{Query, QueryResult};
@@ -142,6 +142,6 @@ impl<'a> NaiveVector<'a> {
     }
 
     pub fn space_usage(&self) -> usize {
-        (self.blocks.len() * 64) + size_of::<Self>()
+        (self.blocks.len() * 64) + mem::size_of::<Self>()
     }
 }
