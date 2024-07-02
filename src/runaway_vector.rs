@@ -4,11 +4,13 @@
 //! [Zhou et al.](https://doi.org/10.1007/978-3-642-38527-8) It has a space overhead of `o(n)` and
 //! answers rank and select queries in `O(1)`.
 //!
-use crate::query::Query::{Access, Rank, Select};
-use crate::query::{Query, QueryResult};
+use std::{cmp, mem};
+
 use bitvec::order::Lsb0;
 use bitvec::prelude::BitVec;
-use std::{cmp, mem};
+
+use crate::query::{Query, QueryResult};
+use crate::query::Query::{Access, Rank, Select};
 
 const L0_BIT_SIZE: usize = 1 << 32;
 const L1_BIT_SIZE: usize = 2048;
@@ -282,7 +284,7 @@ impl<'a> RunawayVector<'a> {
         let l0_pos = idx / L0_BIT_SIZE;
         let l1_pos = idx / L1_BIT_SIZE;
         let l2_pos = (idx / L2_BIT_SIZE) % 4;
-        let bit_idx = idx % L2_BIT_SIZE;
+        let bit_pos = idx % L2_BIT_SIZE;
 
         let l0: usize = self.l0_indices[l0_pos] as usize;
         let l12 = &self.l12_indices[l1_pos];
@@ -291,7 +293,7 @@ impl<'a> RunawayVector<'a> {
         for i in 0..l2_pos {
             l2 += l12.index(i) as usize;
         }
-        let hand_counted = self.bit_vec[idx - bit_idx..idx].count_ones();
+        let hand_counted = self.bit_vec[idx - bit_pos..idx].count_ones();
         l0 + l1 + l2 + hand_counted
     }
 

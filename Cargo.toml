@@ -20,8 +20,3 @@ rand = { version = "0.8.5", features = [ "small_rng" ] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
-
-[[bench]]
-name = "rank"
-path = "benches/rank/index.rs"
-harness = false
