@@ -7,6 +7,7 @@ use std::ops::Sub;
 use std::path::Path;
 use std::time::Instant;
 use std::{env, io};
+use runaway_datastructures::naive_vector::NaiveVector;
 
 fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
