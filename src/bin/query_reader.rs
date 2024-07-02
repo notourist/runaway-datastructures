@@ -38,7 +38,7 @@ fn main() -> Result<(), io::Error> {
     }
     let read_elapsed = start.elapsed();
 
-    let vector = RunawayVector::new(&bit_vec);
+    let vector = NaiveVector::new(&bit_vec, 512);
     let build_elapsed = start.elapsed();
 
     let results: Vec<QueryResult> = queries.iter().map(|query| vector.process(query)).collect();
