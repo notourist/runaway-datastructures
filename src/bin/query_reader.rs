@@ -7,7 +7,6 @@ use std::ops::Sub;
 use std::path::Path;
 use std::time::Instant;
 use std::{env, io};
-use runaway_datastructures::naive_vector::NaiveVector;
 
 fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
@@ -38,7 +37,7 @@ fn main() -> Result<(), io::Error> {
     }
     let read_elapsed = start.elapsed();
 
-    let vector = NaiveVector::new(&bit_vec, 1024);
+    let vector = RunawayVector::new(&bit_vec);
     let build_elapsed = start.elapsed();
 
     let results: Vec<QueryResult> = queries.iter().map(|query| vector.process(query)).collect();

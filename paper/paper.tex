@@ -1,0 +1,282 @@
+\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}
+%This is a template for producing LIPIcs articles. 
+%See lipics-v2021-authors-guidelines.pdf for further information.
+%for A4 paper format use option "a4paper", for US-letter use option "letterpaper"
+%for british hyphenation rules use option "UKenglish", for american hyphenation rules use option "USenglish"
+%for section-numbered lemmas etc., use "numberwithinsect"
+%for enabling cleveref support, use "cleveref"
+%for enabling autoref support, use "autoref"
+%for anonymousing the authors (e.g. for double-blind review), add "anonymous"
+%for enabling thm-restate support, use "thm-restate"
+%for enabling a two-column layout for the author/affilation part (only applicable for > 6 authors), use "authorcolumns"
+%for producing a PDF according the PDF/A standard, add "pdfa"
+\usepackage{tikz, pgfplots, siunitx}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{units}
+\usepgfplotslibrary{groupplots}
+
+\pdfoutput=1 %uncomment to ensure pdflatex processing (mandatatory e.g. to submit to arXiv)
+\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
+
+%\graphicspath{{./graphics/}}%helpful if your graphic files are in another directory
+
+\bibliographystyle{plain}
+
+\title{Partial Rust Implementation of a Compact Data Structures for Rank and Select Queries on Bit Vectors}
+
+\titlerunning{Rusty succinct bit vector}
+
+\author{n7t}{Karlsruhe Institute of Technology, Karlsruhe, Germany}{mail}{DOES NOT EXIST}{}
+
+\authorrunning{n7t}
+\Copyright{n7t}
+\ccsdesc[100]{Theory of computation~Data structures design and analysis}
+
+\keywords{Rank and select, bit vectors, succinct data
+structures}
+
+
+\acknowledgements{I want to thank Florian Kurpicz for making pictures of data structures which are actually really useful and should have been done by the original authors}%optional
+
+%\nolinenumbers %uncomment to disable line numbering
+
+
+
+%Editor-only macros:: begin (do not touch as author)%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\EventEditors{John Q. Open and Joan R. Access}
+\EventNoEds{2}
+\EventLongTitle{42nd Conference on Very Important Topics (CVIT 2016)}
+\EventShortTitle{CVIT 2016}
+\EventAcronym{CVIT}
+\EventYear{2016}
+\EventDate{December 24--27, 2016}
+\EventLocation{Little Whinging, United Kingdom}
+\EventLogo{}
+\SeriesVolume{42}
+\ArticleNo{23}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\maketitle
+
+\section{What we implemented}
+\label{sec:What}
+Succinct data structures are asymptotically at the information theoretical
+minimum of their possible space usage. Unlike compressed data structures this
+enables efficient processing of queries.
+The two queries in interest for a bit vector of length $n$ are:
+\begin{itemize}
+ \item \texttt{rank$_\alpha$(i)} returns the count of $\alpha$s before
+ the \texttt{i}-th position
+ \item \texttt{select$_\alpha$(nth)} returns the position of the $\alpha$-nth
+ in the bit vector.
+\end{itemize}
+where $\alpha \in \{0, 1\}, 0 < i < n$ and $\text{nth} = \text{min}\{i |
+\texttt{rank}(i) = \text{nth}\}$.
+Intuitively, rank and select are the inverse of each other.
+Our data structure implements the indices of \cite{zhou2013space} and supports the
+following lemma:
+Given an in-memory bit vector of length $n$ the data structure
+can be computed in $O(n)$ with a size
+of $o(n)$ and answers rank and select queries in $O(1)$.
+We are especially interested in cases where $n > 2^{30}$ (e.g several GBs)
+as in such cases simply counting bits is unfeasable.
+
+It should be noted, that the data structure is not optimal in a theoretical sense
+as it has an asymptotic space overhead of $3.125\%$, but this
+should not be a pracitcal concern on modern computer systems.
+
+
+\section{How and why we implemented the data structure}
+\label{sec:How and Why}
+Care must be taken to store the bit vector itself efficiently. Storing, for example
+an 8 bit number for every bit would waste the upper 7 bits. Even storing a boolean
+value for each bit is just as wasteful in Rust as each boolean is represented
+with 8 bit. It is therefore necessary to
+manually shift single bits into bytes and store those. This can be a source of
+many problems and subliminal bugs. To work around those we used the bitvec crate.
+This library implements
+functionallity of the standard library for an efficiently stored bit vector
+and therefore allows idiomatic access while not wasting space.
+
+\subsection{Naïve approach}
+As computing the queries on the fly is infeasible, the bit vector is preprocessed
+and partitioned into blocks. For each block the count of ones occuring before each
+block is saved. Therefore, the maximum possible bit vector length
+is limited by the size of the data type used to store the amount of ones in the
+entire bit vector.
+The size of a single block is additionally constrained by the data type of each block:
+e.g. storing a 64 bit sum for
+every 64 bits of the vector would double the amount of space necessary and is hardly \textit{succinct}.
+We want our blocks to cover a large amount of bits. But additional computation is than necessary:
+After a block lookup the bits covered by the block
+still need to be accounted for. If the amount of bits covered is too large, this
+will be slow due many additional memory lookups of the bit vector itself.
+These two constraints are at odds with each other.
+
+\subsection{Cache-centric design}
+To speed up processing of queries and minimize the space overhead we take
+into account todays computer architecture. In general the performance of a large data
+structures is mainly limited by cache misses.
+
+To minimize cache misses, we implemented a three-level data structure.
+The L0 cache entries are 64 bits in size, with each L0 entry accounting for $2^{32}$
+bits. Since each L0 covers a substantial amount of bits, the L0 data structure
+will always fit into the CPU cache as the amount of L0 indices will be small.
+Counting the bits in an area covered by an L0 index directly is infeasible, so we use two additional
+indices.
+
+To further minimize cache misses, we use an interleaved L1 and L2 index.
+Each L1 index is a 32-bit counter, covering 2048 bits.
+The L1 index stores the count of ones from the beginning of the L0 block to
+the current L1 block. Each L2 index is 10 bits in size and counts the ones in a 512-bit block inside a L1 block. We only need to store three out of four
+L2 blocks with each L1 block as the last L2 block can be computed.
+We interleave the L1 and L2 indexes and store them in a single 64-bit number
+wasting only 2 bits in the process.
+
+This design has a space overhead of $3.125\%$ or 64 bits per L1 block.
+Due to the small number of L0 indices saved, they can be disregarded.
+
+\subsection{Answering rank queries}
+First the indices in which the queried position resides are computed
+by dividing the position with the appropriate block size. The L0 index and L1 index are
+added with the cummulative sum of the L2 indices which come before the position.
+The bits inside the queried position's L2 block are computed with bit vector data.
+
+\subsection{Answering select queries}
+To minimize space usage, we reuse the rank data structure for select
+queries. Initially, we perform a linear search to identify the appropriate
+L0 block, followed by a binary search to determine the L1 index. For the L2 index, we sequentially examine each
+block from the first to the last. The remaining bits are counted initially
+in 64-bit chunks and subsequently on a bit-by-bit basis.
+
+The original data structure presented in \cite{zhou2013space} employs
+additional sampling to speed up select queries. However,
+we encountered difficulties implementing sampling correctly,
+resulting in a significant slowdown ($50\%$ of the entire query processing time).
+We were unable to identify the bug causing this issue.
+
+\section{Evaluation}
+\label{sec:Evaluation}
+All benchmarks were run on a dedicated vCPU Server (Hetzner CCX33) with 8 Cores,
+32 GB RAM and 240 GB SSD running on AMD Milan EPYC™ 7003 (only 16MB cache) running Ubuntu 24.04 LTS.
+For the naive design we used a block size of 1024 bits.
+
+\subsection{Different implementations}
+We compare the cache-centric with the naive implementation. Ignoring the cache effects
+occuring up to $2^{17}$ bits, the cache-centric implementation is on average $\qty{300}{\ms}$
+faster for all queries combined as can be seen in Figure \ref{fig:time}. Furthermore, we can
+observe that the cache-centric is not punished as much as the naive implementation for
+exceeding the CPU's cache size of 16MB.
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+    \begin{groupplot}[group style={group size= 2 by 1,horizontal sep=1.7cm},height=6cm,width=.48\textwidth]
+
+        \nextgroupplot[
+            legend columns=2,
+            legend to name=usageLegend,
+            ymode=log,
+            log basis y=10,
+            ylabel={runtime},
+            xlabel={bits},
+            y SI prefix=milli,
+            y unit=s,
+            every axis legend/.append style={
+                at={(0.5,1.03)},
+                anchor=south
+            },
+            xmin=7,
+            xmax=35,
+            xticklabel={$2^{\pgfmathparse{\tick}\pgfmathprintnumber{\pgfmathresult}}$},
+            enlarge x limits=auto,
+            grid=both,
+            table/col sep=comma,
+            tick align=outside,
+            tickpos=left,
+        ]
+            \addplot [
+                mark=+,
+                color=black,
+                error bars/.cd,
+                    y dir=both,
+                    y explicit,
+            ] table [x=bits,y=naive_time,y error=naive_se] {../time_comp.csv};
+            \addlegendentry{Naive}
+
+            \addplot [
+                mark=+,
+                color=orange,
+                error bars/.cd,
+                    y dir=both,
+                    y explicit,
+            ] table [x=bits,y=ra_time,y error=ra_se] {../time_comp.csv};
+            \addlegendentry{Cache-centric}
+
+            \coordinate (topleft) at (rel axis cs:0,1);% coordinate at top of the first plot
+            \nextgroupplot[
+            legend columns=2,
+            ylabel={overhead},
+            xlabel={bits},
+            every axis legend/.append style={
+                at={(0.5,1.03)},
+                anchor=south
+            },
+            xmin=7,
+            xmax=35,
+            xticklabel={$2^{\pgfmathparse{\tick}\pgfmathprintnumber{\pgfmathresult}}$},
+            enlarge x limits=auto,
+            grid=both,
+            table/col sep=comma,
+            tick align=outside,
+            tickpos=left,
+        ]
+            \addplot [
+                mark=+,
+                color=orange,
+                error bars/.cd,
+                    y dir=both,
+                    y explicit,
+            ] table [x=bits,y=overhead_ra] {../overhead.csv};
+
+            \addplot [
+                mark=+,
+                color=black,
+                error bars/.cd,
+                    y dir=both,
+                    y explicit,
+            ] table [x=bits,y=overhead_naive] {../overhead.csv};
+                    \coordinate (topright) at (rel axis cs:1,1);% coordinate at top of the second plot
+
+            %\addplot [
+            %    mark=+,
+            %    color=blue,
+            %    error bars/.cd,
+            %        y dir=both,
+            %        y explicit,
+            %] table [x=bits,y=mean,y error=error] {../paul.csv};
+            %\addlegendentry{Paul}
+        \end{groupplot}
+        \path (topleft)--(topright) coordinate[midway] (group center);
+        \node[align=center,above,yshift=.2cm] at(group center) {\pgfplotslegendfromname{usageLegend}};
+
+    \end{tikzpicture}
+    \caption{Average runtime for 1 Million random queries with the naive and cache-centric design.}
+    \label{fig:time}
+\end{figure}
+While the speed difference might not be overwhelming the naive implementation uses two times
+the space to answer the same queries with worse performance. We also observe the non-optimal space overhead
+in both cases, but lower with the cache-centric design. For small bit vectors, both designs result in significant overhead,
+as some metadata still needs to be computed and saved.
+
+\bibliography{paper}
+\appendix
+\section{Code}
+\begin{itemize}
+ \item The code can be found at \url{https://github.com/notourist/runaway-datastructures/}.
+ \item The bit vector generator can be found at \url{https://github.com/paulheg/kit_advanced_data_structures}.
+\end{itemize}
+
+
+\end{document}

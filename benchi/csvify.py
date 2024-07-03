@@ -1,6 +1,7 @@
 import re
+import sys
 
-with open("hetzner.txt", "r") as f:
+with open(sys.argv[1], "r") as f:
     csv_lines = ["name,time,build,read,space,overhead,bits"]
     for line in f.readlines():
         line = line.strip()
